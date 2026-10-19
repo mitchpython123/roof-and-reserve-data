@@ -1,11 +1,14 @@
 name: Update NEM data
 
 on:
+  # The main trigger is an outside scheduler (a cPanel cron job on the website hosting) that
+  # calls this workflow's workflow_dispatch at 7 and 22 minutes past each hour. GitHub's own
+  # schedule is best effort and in practice drops most hourly runs, so it is kept only as a
+  # backup. Repeat runs are harmless: only new AEMO files are downloaded.
   schedule:
-    # Hourly, at 7 minutes past (UTC; AEMO data for the hour just ended is ready by then).
-    # GitHub runs scheduled jobs on a best-effort basis, so a run can start late.
-    - cron: "7 * * * *"
-  workflow_dispatch:   # lets you run it by hand from the Actions tab, or from an outside scheduler
+    - cron: "12 * * * *"
+    - cron: "42 * * * *"
+  workflow_dispatch:   # run by hand from the Actions tab, or by the outside scheduler
 
 permissions:
   contents: write

@@ -6,20 +6,52 @@ history of 5-minute prices, and publishes a summary for each NEM region.
 
 ## How it works
 
-1. **Every hour**, at about 7 minutes past, the GitHub Action in
-   `.github/workflows/nem-data.yml` runs `python -m rr_nem update`.
+1. **Every hour**, at 7 and 22 minutes past, a cron job on the website hosting (cPanel) asks
+   GitHub to start the Action in `.github/workflows/nem-data.yml`, which runs
+   `python -m rr_nem update`. See "Scheduling" below.
 2. The job downloads new AEMO files (5-minute prices and demand, daily final prices and
    rooftop solar estimates) and adds them to the data store.
 3. It then writes `nem-latest.json` and pushes it, with the store, to the **`data` branch**.
 4. The widget on the website reads that file straight from GitHub:
    `https://raw.githubusercontent.com/mitchpython123/roof-and-reserve-data/data/nem-latest.json`
 
-Nothing runs on the website's own hosting, so the site stays fast.
+The website's hosting only sends a short "run now" request; all the downloading and
+processing happens on GitHub, so the site stays fast.
 
-GitHub starts scheduled jobs on a best-effort basis, so a run can start late. The widget only
-shows its "may be out of date" note when the data is more than about 2.5 hours old. To run the
-job straight away, open the **Actions** tab, choose **Update NEM data** and click
-**Run workflow**.
+The widget shows its "may be out of date" note when the data is more than about 2.5 hours
+old. To run the job straight away, open the **Actions** tab, choose **Update NEM data** and
+click **Run workflow**.
+
+## Scheduling
+
+GitHub's built-in schedule is best effort. In October 2026 it ran this hourly job only every
+2 to 4.5 hours, so the workflow's own `schedule` is now just a backup, and the real trigger is
+a cPanel cron job.
+
+**One-off setup**
+
+1. In GitHub, go to Settings → Developer settings → Personal access tokens →
+   **Fine-grained tokens** → Generate new token.
+   - Repository access: **Only select repositories** → `roof-and-reserve-data`
+   - Permissions: **Actions: Read and write** (nothing else)
+   - Expiration: up to 12 months. Diarise the expiry date: the feed silently falls back to
+     GitHub's unreliable schedule when the token expires.
+2. In cPanel File Manager, create `/home/CPANEL_USER/.gh_token` (in the home folder, **not**
+   inside `public_html`) containing only the token. Set its permissions to 600.
+3. In cPanel → **Cron Jobs**, add a job with Minute `7,22` and every other field `*`, and this
+   command (replace `CPANEL_USER`):
+
+   ```
+   curl -s -o /dev/null -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $(cat /home/CPANEL_USER/.gh_token)" https://api.github.com/repos/mitchpython123/roof-and-reserve-data/actions/workflows/nem-data.yml/dispatches -d '{"ref":"main"}'
+   ```
+
+**Checking it works:** the Actions tab lists cron-started runs as `workflow_dispatch`, at
+about 7 and 22 minutes past each hour.
+
+**Why 7 and 22 minutes past:** the widget shows the last complete hour, so what matters is
+running soon after the hour closes. AEMO's files for the interval ending on the hour are
+normally out within a few minutes; the 22-minute run is a retry in case AEMO or GitHub was
+slow.
 
 ## What the widget shows
 
