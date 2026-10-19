@@ -25,8 +25,6 @@ DISPATCH_PATTERN = r"PUBLIC_DISPATCHIS_(\d{12})_\d+\.zip$"
 PRICES_PATTERN = r"PUBLIC_PRICES_(\d{8})0000_\d+\.zip$"
 ROOFTOP_PATTERN = r"PUBLIC_ROOFTOP_PV_ACTUAL_MEASUREMENT_(\d{14})_\d+\.zip$"
 
-REFETCH_WINDOW = timedelta(minutes=30)  # re-read recent files in case one arrived late
-
 
 class IngestError(RuntimeError):
     """Raised when the live feed cannot be read, so the published data is left untouched."""
@@ -36,16 +34,21 @@ def _log(message):
     print(message, file=sys.stderr)
 
 
-def ingest_dispatch(store, fetcher, max_files=700):
-    """Fetch new 5-minute dispatch files (prices and demand). Critical: raises on failure."""
+def ingest_dispatch(store, fetcher, max_files=72):
+    """Fetch the 5-minute dispatch files (prices and demand) we don't hold yet.
+
+    Newest first, at most max_files per run, so a first run (or a catch-up after an outage)
+    is spread over several runs instead of asking AEMO for hundreds of files at once.
+    Critical: raises if nothing could be read, so the published data is left untouched.
+    """
     files = fetcher.list_files(DISPATCH_DIR, DISPATCH_PATTERN)
     if not files:
         raise IngestError("No dispatch files were listed. NEMWEB may be down or its layout changed.")
     parsed = sorted((datetime.strptime(groups[0], "%Y%m%d%H%M"), name) for name, groups in files)
 
-    last = store.max_first("dispatch_price")
-    cutoff = last - REFETCH_WINDOW if last else None
-    wanted = [p for p in parsed if cutoff is None or p[0] > cutoff][-max_files:]
+    have = {row[0] for row in store.rows("dispatch_price", since=parsed[0][0])}
+    missing = [p for p in parsed if p[0] not in have]
+    wanted = missing[-max_files:][::-1]  # newest first
     blobs = fetcher.get_many([DISPATCH_DIR + name for _, name in wanted])
 
     price_rows, demand_rows = [], []
@@ -55,11 +58,15 @@ def ingest_dispatch(store, fetcher, max_files=700):
         price_rows += extract_prices(blob)
         demand_rows += extract_demand(blob)
     if wanted and not price_rows:
+        if all(blob is None for blob in blobs):
+            raise IngestError("None of the dispatch files could be downloaded (AEMO refused or "
+                              "was unreachable). The previously published data is left as it was.")
         raise IngestError("Dispatch files were downloaded but no prices could be read from them. "
                           "The file format may have changed.")
     store.upsert("dispatch_price", price_rows)
     store.upsert("dispatch_regionsum", demand_rows)
-    return {"dispatch_files": len(wanted), "price_rows": len(price_rows), "demand_rows": len(demand_rows)}
+    return {"dispatch_files": sum(1 for b in blobs if b is not None), "still_missing": max(0, len(missing) - len(wanted)),
+            "price_rows": len(price_rows), "demand_rows": len(demand_rows)}
 
 
 def ingest_daily_prices(store, fetcher, now, lookback_days=14):
@@ -76,6 +83,7 @@ def ingest_daily_prices(store, fetcher, now, lookback_days=14):
         day = today - timedelta(days=k)
         if day.isoformat() in done or day not in listed:
             continue
+        fetcher.polite()
         blob = fetcher.get(PRICES_DIR + listed[day])
         rows = extract_prices(blob)
         if rows:
@@ -87,7 +95,7 @@ def ingest_daily_prices(store, fetcher, now, lookback_days=14):
     return {"daily_files": fetched}
 
 
-def ingest_rooftop(store, fetcher, max_files=96):
+def ingest_rooftop(store, fetcher, max_files=48):
     """Fetch new rooftop solar estimates."""
     files = fetcher.list_files(ROOFTOP_DIR, ROOFTOP_PATTERN)
     parsed = sorted((datetime.strptime(groups[0], "%Y%m%d%H%M%S"), name) for name, groups in files)

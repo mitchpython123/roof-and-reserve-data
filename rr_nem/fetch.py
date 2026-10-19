@@ -6,7 +6,6 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 
 
 def _user_agent():
@@ -18,11 +17,20 @@ def _user_agent():
 class Fetcher:
     """Downloads files and directory listings. Tests replace this with a fake."""
 
-    def __init__(self, timeout=45, retries=3, workers=4, user_agent=None):
+    def __init__(self, timeout=45, retries=3, pause=0.4, max_refused=3, user_agent=None):
         self.timeout = timeout
         self.retries = retries
-        self.workers = workers
+        self.pause = pause              # seconds to wait between downloads (be gentle with AEMO)
+        self.max_refused = max_refused  # stop a batch after this many refusals in a row
         self.user_agent = user_agent or _user_agent()
+        self._last_request = 0.0
+
+    def polite(self):
+        """Wait so that downloads are at least `pause` seconds apart."""
+        wait = self.pause - (time.monotonic() - self._last_request)
+        if wait > 0:
+            time.sleep(wait)
+        self._last_request = time.monotonic()
 
     def get(self, url):
         """Return the bytes at url. Raises on failure after retries."""
@@ -33,8 +41,15 @@ class Fetcher:
                 with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                     return resp.read()
             except urllib.error.HTTPError as exc:
-                if exc.code in (403, 404):
+                if exc.code == 404:
                     raise  # retrying will not help
+                if exc.code in (403, 429):
+                    # AEMO answers 403 when it is rate limiting. Wait longer, try once more.
+                    last = exc
+                    if attempt >= 1:
+                        raise
+                    time.sleep(8)
+                    continue
                 last = exc
             except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
                 last = exc
@@ -42,19 +57,28 @@ class Fetcher:
         raise last
 
     def get_many(self, urls):
-        """Download several urls in parallel. A failed download gives None."""
+        """Download several urls one at a time, politely. A failed download gives None.
 
-        def one(url):
+        If AEMO refuses several downloads in a row we stop the batch and leave the rest
+        for the next run, rather than hammering a server that has said no.
+        """
+        results = []
+        refused = 0
+        for i, url in enumerate(urls):
+            if refused >= self.max_refused:
+                print(f"warning: stopping after {refused} refused downloads in a row; "
+                      f"{len(urls) - i} file(s) left for the next run", file=sys.stderr)
+                results.extend([None] * (len(urls) - i))
+                break
+            self.polite()
             try:
-                return self.get(url)
+                results.append(self.get(url))
+                refused = 0
             except Exception as exc:  # noqa: BLE001 - report and carry on
                 print(f"warning: could not download {url}: {exc}", file=sys.stderr)
-                return None
-
-        if not urls:
-            return []
-        with ThreadPoolExecutor(max_workers=self.workers) as pool:
-            return list(pool.map(one, urls))
+                results.append(None)
+                refused += 1
+        return results
 
     def list_files(self, dir_url, pattern):
         """List .zip files in a NEMWEB directory page whose name matches pattern.

@@ -107,7 +107,7 @@ class FakeFetcher(Fetcher):
     """Serves directory listings and zips from memory and records every download."""
 
     def __init__(self, files=None, fail_dirs=()):
-        super().__init__()
+        super().__init__(pause=0)
         self.files = dict(files or {})
         self.fail_dirs = set(fail_dirs)
         self.calls = []

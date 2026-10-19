@@ -104,7 +104,7 @@ class TestIngest(TmpDirTest):
             f.add(DISPATCH_DIR, dispatch_name(t), dispatch_zip(t))
         return f
 
-    def test_incremental_dispatch_with_refetch_window(self):
+    def test_incremental_dispatch_fetches_only_missing_files(self):
         start = datetime(2026, 10, 16, 5, 5)
         f = self.dispatch_fetcher(start, 12)
         first = ingest.ingest_dispatch(self.store, f)
@@ -117,10 +117,28 @@ class TestIngest(TmpDirTest):
             f.add(DISPATCH_DIR, dispatch_name(t), dispatch_zip(t))
         f.calls.clear()
         second = ingest.ingest_dispatch(self.store, f)
-        # last stored = 06:00; window re-reads files after 05:30 (6 old + 2 new)
-        self.assertEqual(second["dispatch_files"], 8)
-        self.assertEqual(len(f.downloads(DISPATCH_DIR)), 8)
+        self.assertEqual(second["dispatch_files"], 2)
+        self.assertEqual(len(f.downloads(DISPATCH_DIR)), 2)
         self.assertEqual(len(list(self.store.rows("dispatch_price"))), 14 * 5)  # no duplicates
+
+    def test_catch_up_is_capped_per_run_newest_first(self):
+        start = datetime(2026, 10, 16, 5, 5)
+        f = self.dispatch_fetcher(start, 20)
+        first = ingest.ingest_dispatch(self.store, f, max_files=8)
+        self.assertEqual((first["dispatch_files"], first["still_missing"]), (8, 12))
+        self.assertEqual(self.store.max_first("dispatch_price"), start + timedelta(minutes=5 * 19))
+        second = ingest.ingest_dispatch(self.store, f, max_files=8)
+        self.assertEqual(second["still_missing"], 4)
+
+    def test_all_downloads_refused_raises(self):
+        f = FakeFetcher()
+        t = datetime(2026, 10, 16, 7, 15)
+        f.add(DISPATCH_DIR, dispatch_name(t), dispatch_zip(t))
+        f.files = {}  # listed earlier, now missing: every download fails
+        f.get_many = lambda urls: [None] * len(urls)
+        f.list_files = lambda d, pat: [(dispatch_name(t), (t.strftime("%Y%m%d%H%M"),))]
+        with self.assertRaises(ingest.IngestError):
+            ingest.ingest_dispatch(self.store, f)
 
     def test_no_files_listed_raises(self):
         with self.assertRaises(ingest.IngestError):
