@@ -1,5 +1,5 @@
 <!--
-  Roof & Reserve: "NEM right now" widget.
+  Roof & Reserve: "NEM at a glance" widget.
   Paste this whole block into a WordPress Custom HTML block (or a WPCode "HTML snippet").
   Before going live, set data-src to the web address of your nem-latest.json file.
 -->
@@ -7,38 +7,43 @@
   <noscript>Live market statistics need JavaScript to be switched on.</noscript>
 </div>
 <style>
-.rr-nem{--rr-teal:#0B3C49;--rr-teal2:#0F6B7A;--rr-amber:#F2A900;--rr-bg:#F7F9FA;--rr-text:#1B2A30;--rr-muted:#5B6B73;--rr-line:#DDE5E8;
-  box-sizing:border-box;max-width:760px;margin:0 auto 1.5rem;padding:16px;background:#fff;color:var(--rr-text);
-  border:1px solid var(--rr-line);border-radius:12px;font-family:inherit;line-height:1.4;text-align:left}
+.rr-nem{--rr-teal:var(--wp--preset--color--contrast,#111);--rr-teal2:var(--wp--preset--color--contrast,#111);--rr-amber:var(--wp--preset--color--accent-3,#d8613c);
+  --rr-bg:var(--wp--preset--color--base,#f9f9f9);--rr-text:var(--wp--preset--color--contrast,#111);--rr-muted:var(--wp--preset--color--contrast-2,#636363);
+  --rr-line:var(--wp--preset--color--accent,#cfcabe);--rr-bar:var(--wp--preset--color--contrast-2,#636363);--rr-neg:var(--wp--preset--color--accent-3,#d8613c);
+  --rr-band1:color-mix(in srgb,var(--wp--preset--color--accent,#cfcabe) 35%,transparent);--rr-band2:color-mix(in srgb,var(--wp--preset--color--accent-5,#b5bdbc) 30%,transparent);
+  --rr-head:var(--wp--preset--font-family--heading,Cardo,serif);
+  box-sizing:border-box;max-width:760px;margin:0 auto 1.5rem;padding:20px;background:var(--wp--preset--color--base-2,#fff);color:var(--rr-text);
+  border:1px solid var(--rr-line);border-radius:16px;font-family:var(--wp--preset--font-family--body,inherit);line-height:1.45;text-align:left}
 .rr-nem *{box-sizing:border-box}
 .rr-nem .rr-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:flex-end;justify-content:space-between}
-.rr-nem .rr-title{margin:0;font-size:18px;font-weight:700;color:var(--rr-teal)}
-.rr-nem .rr-sub{margin:2px 0 0;font-size:13px;color:var(--rr-muted)}
-.rr-nem .rr-pick label{display:block;margin-bottom:2px;font-size:12px;color:var(--rr-muted)}
-.rr-nem .rr-pick select{min-width:220px;max-width:100%;padding:6px 10px;font:inherit;font-size:16px;color:var(--rr-text);
-  background:#fff;border:1px solid var(--rr-muted);border-radius:8px}
-.rr-nem select:focus-visible{outline:3px solid var(--rr-teal2);outline-offset:2px}
-.rr-nem .rr-note{margin:12px 0 0;padding:8px 12px;font-size:13px;color:var(--rr-text);background:#FFF6D9;
-  border:1px solid var(--rr-amber);border-radius:8px}
-.rr-nem .rr-hero{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;margin:14px 0 2px}
-.rr-nem .rr-price{font-size:40px;font-weight:700;line-height:1.1;color:var(--rr-teal)}
-.rr-nem .rr-unit{font-size:15px;font-weight:400;color:var(--rr-muted)}
+.rr-nem .rr-title{margin:0;font-family:var(--rr-head);font-size:24px;font-weight:400;color:var(--rr-teal)}
+.rr-nem .rr-sub{margin:2px 0 0;font-size:14px;color:var(--rr-muted)}
+.rr-nem .rr-pick label{display:block;margin-bottom:2px;font-size:13px;color:var(--rr-muted)}
+.rr-nem .rr-pick select{min-width:110px;max-width:100%;padding:6px 10px;font:inherit;font-size:16px;color:var(--rr-text);
+  background:var(--wp--preset--color--base-2,#fff);border:1px solid var(--rr-muted);border-radius:6px}
+.rr-nem select:focus-visible{outline:2px solid var(--rr-teal);outline-offset:2px}
+.rr-nem .rr-note{margin:12px 0 0;padding:8px 12px;font-size:14px;color:var(--rr-text);
+  background:color-mix(in srgb,var(--rr-amber) 10%,transparent);border:1px solid var(--rr-amber);border-radius:6px}
+.rr-nem .rr-hero{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;margin:2px 0 2px}
+.rr-nem .rr-kicker{margin:16px 0 0;font-size:14px;color:var(--rr-muted)}
+.rr-nem .rr-price{font-family:var(--rr-head);font-size:48px;font-weight:400;line-height:1.1;color:var(--rr-teal)}
+.rr-nem .rr-unit{font-family:var(--wp--preset--font-family--body,inherit);font-size:15px;font-weight:400;color:var(--rr-muted)}
 .rr-nem .rr-cents{font-size:15px}
-.rr-nem .rr-cmp{margin:0 0 12px;font-size:14px;color:var(--rr-muted)}
+.rr-nem .rr-cmp{margin:0 0 14px;font-size:14px;color:var(--rr-muted)}
 .rr-nem .rr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0;padding:0}
-.rr-nem .rr-tile{margin:0;padding:10px 12px;background:var(--rr-bg);border-radius:8px}
-.rr-nem .rr-tile dt{margin:0;font-size:12px;color:var(--rr-muted)}
+.rr-nem .rr-tile{margin:0;padding:12px 14px;background:var(--rr-bg);border-radius:8px}
+.rr-nem .rr-tile dt{margin:0;font-size:13px;color:var(--rr-muted)}
 .rr-nem .rr-tile dd{margin:0}
-.rr-nem .rr-val{font-size:20px;font-weight:700;color:var(--rr-teal)}
-.rr-nem .rr-small{font-size:12px;color:var(--rr-muted)}
+.rr-nem .rr-val{font-family:var(--rr-head);font-size:26px;font-weight:400;color:var(--rr-teal)}
+.rr-nem .rr-small{font-size:13px;color:var(--rr-muted)}
 .rr-nem .rr-wide{grid-column:1/-1;border-left:4px solid var(--rr-amber)}
-.rr-nem .rr-chart{margin:16px 0 0}
-.rr-nem .rr-chart-title{margin:0 0 4px;font-size:14px;font-weight:700;color:var(--rr-teal)}
-.rr-nem .rr-chart svg{display:block;width:100%;height:auto}
-.rr-nem .rr-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:4px 0 0;font-size:12px;color:var(--rr-muted)}
+.rr-nem .rr-chart{margin:18px 0 0}
+.rr-nem .rr-chart-title{margin:0 0 4px;font-family:var(--rr-head);font-size:18px;font-weight:400;color:var(--rr-teal)}
+.rr-nem .rr-chart svg{display:block;width:100%;height:auto;font-family:var(--wp--preset--font-family--body,inherit)}
+.rr-nem .rr-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:4px 0 0;font-size:13px;color:var(--rr-muted)}
 .rr-nem .rr-sw{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-radius:2px}
-.rr-nem .rr-foot{margin:14px 0 0;font-size:12px;color:var(--rr-muted)}
-.rr-nem .rr-foot a{color:var(--rr-teal2)}
+.rr-nem .rr-foot{margin:14px 0 0;font-size:13px;color:var(--rr-muted)}
+.rr-nem .rr-foot a{color:var(--rr-teal)}
 </style>
 <script>
 (function () {
@@ -58,9 +63,9 @@
   REGIONS.forEach(function (r) { NAMES[r[0]] = r[1]; });
   var STORE_KEY = 'rr_nem_region';
   var CAP_HI = 500, CAP_LO = -150;   // chart axis limits, $/MWh
-  var STALE_MIN = 30;                // warn if the data is older than this
-  var REFRESH_MS = 300000;           // re-check for new data every 5 minutes
-  var TEAL = '#0F6B7A', AMBER = '#F2A900', MUTED = '#5B6B73';
+  var STALE_MIN = 150;               // warn if the data is older than this (the feed updates hourly)
+  var REFRESH_MS = 900000;           // re-check for new data every 15 minutes
+  var TEAL = 'var(--rr-bar)', AMBER = 'var(--rr-neg)', MUTED = 'var(--rr-muted)';
 
   var data = null, failed = false;
   var region = NAMES[DEFAULT] ? DEFAULT : 'NSW1';
@@ -93,6 +98,13 @@
     h = h % 12 || 12;
     return h + ':' + m + ap;
   }
+  function hour(iso) {
+    if (!iso) { return ''; }
+    var h = parseInt(iso.slice(11, 13), 10), m = iso.slice(14, 16);
+    var ap = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    return h + (m === '00' ? '' : ':' + m) + ap;
+  }
   function duration(intervals) {
     var t = intervals * 5, h = Math.floor(t / 60), m = t % 60, parts = [];
     if (!t) { return 'None so far'; }
@@ -113,7 +125,7 @@
     var vals = (r.today && r.today.shape30) || [];
     var bodyEl = document.getElementById('rr-nem-body');
     var W = Math.max(300, Math.min(720, Math.round((bodyEl && bodyEl.clientWidth) || 360)));
-    var H = Math.round(Math.max(150, Math.min(230, W * 0.4))), L = 46, R = 6, T = 22, B = 24;
+    var H = Math.round(Math.max(150, Math.min(230, W * 0.4))), L = 78, R = 6, T = 22, B = 24;
     var pw = W - L - R, ph = H - T - B, bw = pw / 48;
     var mn = Infinity, mx = -Infinity, i;
     for (i = 0; i < vals.length; i++) {
@@ -126,36 +138,36 @@
     function y(v) { return T + (hi - v) / (hi - lo) * ph; }
     var y0 = y(0), s = '';
     var win = data.windows || { midday: [10, 15], evening: [17, 21] };
-    [['Midday', win.midday, '#FFF6D9'], ['Evening', win.evening, '#E4F0F2']].forEach(function (b) {
+    [['Midday', win.midday, 'var(--rr-band1)'], ['Evening', win.evening, 'var(--rr-band2)']].forEach(function (b) {
       var a = (b[1][0] - 4) * 2, z = (b[1][1] - 4) * 2;
-      s += '<rect x="' + (L + a * bw) + '" y="' + T + '" width="' + ((z - a) * bw) + '" height="' + ph + '" fill="' + b[2] + '"/>';
-      s += '<text x="' + (L + (a + z) / 2 * bw) + '" y="' + (T - 6) + '" text-anchor="middle" font-size="11" fill="' + MUTED + '">' + b[0] + '</text>';
+      s += '<rect x="' + (L + a * bw) + '" y="' + T + '" width="' + ((z - a) * bw) + '" height="' + ph + '" style="fill:' + b[2] + '"/>';
+      s += '<text x="' + (L + (a + z) / 2 * bw) + '" y="' + (T - 6) + '" text-anchor="middle" font-size="11" style="fill:' + MUTED + '">' + b[0] + '</text>';
     });
     for (i = 0; i < vals.length && i < 48; i++) {
       var v = vals[i];
       if (v === null || v === undefined) { continue; }
       var cv = Math.max(lo, Math.min(hi, v)), top = y(Math.max(cv, 0)), bot = y(Math.min(cv, 0));
       s += '<rect x="' + (L + i * bw + 0.5).toFixed(2) + '" y="' + top.toFixed(2) + '" width="' + (bw - 1).toFixed(2) +
-        '" height="' + Math.max(1, bot - top).toFixed(2) + '" fill="' + (v < 0 ? AMBER : TEAL) + '"><title>' +
+        '" height="' + Math.max(1, bot - top).toFixed(2) + '" style="fill:' + (v < 0 ? AMBER : TEAL) + '"><title>' +
         slotLabel(i) + ': ' + money(v) + '/MWh</title></rect>';
     }
-    s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y0.toFixed(2) + '" y2="' + y0.toFixed(2) + '" stroke="' + MUTED + '" stroke-width="0.75"/>';
-    s += '<text x="' + (L - 5) + '" y="' + (T + 4) + '" text-anchor="end" font-size="11" fill="' + MUTED + '">' + money(hi) + '</text>';
-    s += '<text x="' + (L - 5) + '" y="' + (y0 + 3.5).toFixed(2) + '" text-anchor="end" font-size="11" fill="' + MUTED + '">$0</text>';
+    s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y0.toFixed(2) + '" y2="' + y0.toFixed(2) + '" style="stroke:' + MUTED + '" stroke-width="0.75"/>';
+    s += '<text x="' + (L - 5) + '" y="' + (T + 4) + '" text-anchor="end" font-size="11" style="fill:' + MUTED + '">' + money(hi) + '/MWh</text>';
+    s += '<text x="' + (L - 5) + '" y="' + (y0 + 3.5).toFixed(2) + '" text-anchor="end" font-size="11" style="fill:' + MUTED + '">$0/MWh</text>';
     if (lo < 0) {
-      s += '<text x="' + (L - 5) + '" y="' + (T + ph + 3) + '" text-anchor="end" font-size="11" fill="' + MUTED + '">' + money(lo) + '</text>';
+      s += '<text x="' + (L - 5) + '" y="' + (T + ph + 3) + '" text-anchor="end" font-size="11" style="fill:' + MUTED + '">' + money(lo) + '/MWh</text>';
     }
     [[0, '4am', 'start'], [12, '10am', 'middle'], [24, '4pm', 'middle'], [36, '10pm', 'middle'], [48, '4am', 'end']].forEach(function (t) {
-      s += '<text x="' + (L + t[0] * bw) + '" y="' + (H - 6) + '" text-anchor="' + t[2] + '" font-size="11" fill="' + MUTED + '">' + t[1] + '</text>';
+      s += '<text x="' + (L + t[0] * bw) + '" y="' + (H - 6) + '" text-anchor="' + t[2] + '" font-size="11" style="fill:' + MUTED + '">' + t[1] + '</text>';
     });
     var label = hasData
       ? 'Wholesale price by half hour since 4am for ' + NAMES[region] + ', from ' + money(mn) + ' to ' + money(mx) + ' per megawatt hour. Amber bars are negative prices.'
       : 'No price data yet for today.';
     return '<div class="rr-chart"><p class="rr-chart-title">Today’s wholesale price by half hour</p>' +
       '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + label + '">' + s + '</svg>' +
-      '<div class="rr-legend"><span><i class="rr-sw" style="background:' + TEAL + '"></i>Price above $0</span>' +
+      '<div class="rr-legend"><span><i class="rr-sw" style="background:' + TEAL + '"></i>Price above $0/MWh</span>' +
       '<span><i class="rr-sw" style="background:' + AMBER + '"></i>Negative price</span>' +
-      '<span>Shaded: midday and evening windows</span>' + (clipped ? '<span>Chart capped at ' + money(CAP_HI) + ' and ' + money(CAP_LO) + '</span>' : '') +
+      '<span>Shaded: midday and evening windows</span>' + (clipped ? '<span>Chart capped at ' + money(CAP_HI) + '/MWh and ' + money(CAP_LO) + '/MWh</span>' : '') +
       '</div></div>';
   }
 
@@ -170,7 +182,7 @@
     if (!body) { return; }
     if (!data) {
       body.innerHTML = failed
-        ? '<p class="rr-note">Live market data isn’t available right now. Please check back shortly.</p>'
+        ? '<p class="rr-note">Live market data is not available right now. Please check back shortly.</p>'
         : '<p class="rr-small">Loading market data…</p>';
       return;
     }
@@ -184,23 +196,27 @@
       h += '<p class="rr-note">These figures may be out of date. The latest data is from ' + clock(data.data_as_at) + ' AEST.</p>';
     }
 
-    var cmp = 'As at ' + clock(c.as_at) + ' AEST';
-    if (l7 && l7.avg !== null && l7.avg !== undefined && c.price !== null && c.price !== undefined) {
-      cmp += ' · ' + (c.price >= l7.avg ? 'above' : 'below') + ' the 7-day average of ' + money(l7.avg) + '/MWh';
+    var lh = r.last_hour;
+    var useHour = !!(lh && lh.avg !== null && lh.avg !== undefined);
+    var price = useHour ? lh.avg : c.price;
+    var cmp = useHour ? hour(lh.start) + ' to ' + hour(lh.end) + ' AEST' : 'As at ' + clock(c.as_at) + ' AEST';
+    if (l7 && l7.avg !== null && l7.avg !== undefined && price !== null && price !== undefined) {
+      cmp += ' · ' + (price >= l7.avg ? 'above' : 'below') + ' the 7-day average of ' + money(l7.avg) + '/MWh';
     }
-    h += '<div class="rr-hero"><span class="rr-price">' + money(c.price) + '<span class="rr-unit"> /MWh</span></span>' +
-      '<span class="rr-cents">' + cents(c.price) + ' wholesale</span></div><p class="rr-cmp">' + cmp + '</p>';
+    h += '<p class="rr-kicker">' + (useHour ? 'Last hour’s average price' : 'Latest price') + '</p>' +
+      '<div class="rr-hero"><span class="rr-price">' + money(price) + '<span class="rr-unit"> /MWh</span></span>' +
+      '<span class="rr-cents">' + cents(price) + ' wholesale</span></div><p class="rr-cmp">' + cmp + '</p>';
 
     h += '<dl class="rr-grid">';
     h += tile('Today’s average', money(t.avg) + '<span class="rr-unit"> /MWh</span>',
-      'Low ' + money(t.min) + ' · High ' + money(t.max));
-    h += tile('Negative prices today', duration(t.negative_intervals || 0), 'Time priced below $0 since 4am');
-    h += tile('Demand now', mw(c.demand_mw), 'Total demand in the region');
-    h += tile('Rooftop solar now', mw(c.rooftop_pv_mw),
+      'Low ' + cents(t.min) + ' · High ' + cents(t.max));
+    h += tile('Negative prices today', duration(t.negative_intervals || 0), 'Time priced below $0/MWh since 4am');
+    h += tile('Latest demand', mw(c.demand_mw), c.demand_as_at ? 'As at ' + clock(c.demand_as_at) + ' AEST' : 'Total demand in the region');
+    h += tile('Latest rooftop solar', mw(c.rooftop_pv_mw),
       c.rooftop_as_at ? 'Estimate as at ' + clock(c.rooftop_as_at) + ' AEST' : 'Not available');
     if (l7 && l7.gap !== null && l7.gap !== undefined) {
       h += tile('Evening vs midday, last ' + l7.days + ' days', signedMoney(l7.gap) + '<span class="rr-unit"> /MWh</span>',
-        'Midday average ' + money(l7.midday_avg) + ' → evening average ' + money(l7.evening_avg) +
+        'Midday average ' + money(l7.midday_avg) + '/MWh → evening average ' + money(l7.evening_avg) + '/MWh' +
         ' (' + cents(Math.abs(l7.gap)) + ' gap). This is the spread a battery can try to capture, before efficiency losses and fees.', 'rr-wide');
     } else {
       h += tile('Evening vs midday', '–', 'Not enough history yet to compare.', 'rr-wide');
@@ -209,19 +225,19 @@
     h += chart(r);
 
     var link = safeLink(DISCLAIMER);
-    h += '<p class="rr-foot">Source: AEMO public market data, 4am-to-4am market day, refreshed about every 10 minutes. ' +
+    h += '<p class="rr-foot">Source: AEMO public market data, 4am-to-4am market day, updated hourly. ' +
       'These are wholesale prices, not what you pay: your plan adds network and retail charges. ' +
-      'Western Australia and the Northern Territory aren’t part of the NEM. General information only' +
+      'Western Australia and the Northern Territory are not part of the NEM. General information only' +
       (link ? ' (<a href="' + link + '">disclaimer</a>)' : '') + '.</p>';
     body.innerHTML = h;
   }
 
   function build() {
     var opts = REGIONS.map(function (r) {
-      return '<option value="' + r[0] + '"' + (r[0] === region ? ' selected' : '') + '>' + r[1] + '</option>';
+      return '<option value="' + r[0] + '"' + (r[0] === region ? ' selected' : '') + ' title="' + r[1] + '">' + r[0].replace(/1$/, '') + '</option>';
     }).join('');
     root.innerHTML =
-      '<div class="rr-head"><div><p class="rr-title" role="heading" aria-level="2">NEM right now</p>' +
+      '<div class="rr-head"><div><p class="rr-title" role="heading" aria-level="2">NEM at a glance</p>' +
       '<p class="rr-sub">Wholesale electricity prices and conditions in your state</p></div>' +
       '<div class="rr-pick"><label for="rr-nem-region">Choose your state</label>' +
       '<select id="rr-nem-region">' + opts + '</select></div></div>' +
@@ -236,7 +252,7 @@
 
   function load() {
     if (!window.fetch || !SRC || SRC.indexOf('REPLACE') === 0) { failed = true; render(); return; }
-    var url = SRC + (SRC.indexOf('?') < 0 ? '?' : '&') + 'v=' + Math.floor(Date.now() / 300000);
+    var url = SRC + (SRC.indexOf('?') < 0 ? '?' : '&') + 'v=' + Math.floor(Date.now() / 900000);
     window.fetch(url, { cache: 'no-cache' })
       .then(function (resp) { if (!resp.ok) { throw new Error('HTTP ' + resp.status); } return resp.json(); })
       .then(function (json) { data = json; failed = false; render(); })

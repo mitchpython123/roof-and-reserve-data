@@ -2,8 +2,10 @@ name: Update NEM data
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
-  workflow_dispatch:
+    # Hourly, at 7 minutes past (UTC; AEMO data for the hour just ended is ready by then).
+    # GitHub runs scheduled jobs on a best-effort basis, so a run can start late.
+    - cron: "7 * * * *"
+  workflow_dispatch:   # lets you run it by hand from the Actions tab, or from an outside scheduler
 
 permissions:
   contents: write

@@ -196,6 +196,29 @@ class TestDerive(TmpDirTest):
         self.assertEqual(qld["last7"]["gap"], 210.0)
         self.assertEqual(qld["current"]["price"], 60.0)
 
+    def test_last_hour_is_the_latest_complete_clock_hour(self):
+        # data runs to 12:25, so the last complete hour is 11:00-12:00 (midday band, -10)
+        fill_store(self.store, date(2026, 10, 15), date(2026, 10, 16), until=datetime(2026, 10, 16, 12, 25))
+        data = derive(self.store, now=NOW)
+        nsw = data["regions"]["NSW1"]["last_hour"]
+        self.assertEqual(nsw, {"avg": -10.0, "start": "2026-10-16T11:00:00+10:00",
+                               "end": "2026-10-16T12:00:00+10:00", "intervals": 12})
+        self.assertEqual(data["regions"]["QLD1"]["last_hour"]["avg"], 0.0)
+
+    def test_last_hour_when_data_ends_on_the_hour(self):
+        # data to exactly 10:00: the last complete hour is 09:00-10:00, all priced at 50
+        fill_store(self.store, date(2026, 10, 15), date(2026, 10, 16), until=datetime(2026, 10, 16, 10, 0))
+        nsw = derive(self.store, now=NOW)["regions"]["NSW1"]["last_hour"]
+        self.assertEqual((nsw["start"], nsw["avg"], nsw["intervals"]), ("2026-10-16T09:00:00+10:00", 50.0, 12))
+
+    def test_last_hour_is_omitted_when_too_thin(self):
+        fill_store(self.store, date(2026, 10, 15), date(2026, 10, 16), until=datetime(2026, 10, 16, 9, 0))
+        rows = [r for r in self.store.rows("dispatch_price")
+                if not (datetime(2026, 10, 16, 8, 0) < r[0] <= datetime(2026, 10, 16, 8, 40))]
+        thin = Store(os.path.join(self.root, "thin"))
+        thin.upsert("dispatch_price", rows)
+        self.assertIsNone(derive(thin, now=NOW)["regions"]["NSW1"]["last_hour"])
+
     def test_midday_today_counts_negative_time_and_shape(self):
         fill_store(self.store, date(2026, 10, 14), date(2026, 10, 16), until=datetime(2026, 10, 16, 12, 0))
         today = derive(self.store, now=NOW)["regions"]["NSW1"]["today"]

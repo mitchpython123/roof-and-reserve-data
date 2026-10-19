@@ -8,6 +8,8 @@ Definitions (all in NEM time, AEST all year):
   * Last 7 days  the seven most recent COMPLETE market days before the current one
                  (a day needs at least 280 of its 288 intervals to count).
   * Gap          evening average minus midday average, over the last 7 days.
+  * Last hour    the most recent complete clock hour in the store (for example 09:00-10:00),
+                 averaged over its twelve 5-minute prices. Needs at least 6 of the 12.
 """
 
 import json
@@ -20,6 +22,7 @@ from .common import (EVENING, INTERVAL, MIDDAY, MARKET_DAY_START_HOUR, REGIONS, 
 LOOKBACK_DAYS = 15
 COMPLETE_MIN = 280
 SLOTS = 48  # half-hour slots in a market day
+HOUR_MIN_INTERVALS = 6  # of 12, before an hourly average is published
 
 
 class DeriveError(RuntimeError):
@@ -106,6 +109,25 @@ def _latest_by_region(rows, ts_index, value_index):
     return {region: (row[ts_index], row[value_index]) for region, row in best.items()}
 
 
+def last_full_hour(latest):
+    """(start, end) of the most recent clock hour fully covered by data up to `latest`.
+
+    Intervals are stamped with their END time, so the hour 09:00-10:00 is the intervals
+    stamped 09:05 to 10:00 inclusive.
+    """
+    end = latest.replace(minute=0, second=0, microsecond=0)
+    return end - timedelta(hours=1), end
+
+
+def hour_average(values, start, end):
+    """values: sorted [(ts, rrp)] -> {avg, start, end, intervals} or None if too thin."""
+    prices = [rrp for ts, rrp in values if start < ts <= end]
+    if len(prices) < HOUR_MIN_INTERVALS:
+        return None
+    return {"avg": _r(sum(prices) / len(prices)), "start": iso_nem(start), "end": iso_nem(end),
+            "intervals": len(prices)}
+
+
 def derive(store, now=None, sample=False, lookback_days=LOOKBACK_DAYS, persist_daily=True):
     """Build the widget JSON (as a dict) from the store, and refresh recent daily_stats."""
     latest = store.max_first("dispatch_price")
@@ -140,6 +162,8 @@ def derive(store, now=None, sample=False, lookback_days=LOOKBACK_DAYS, persist_d
     demand = _latest_by_region(
         (r for r in store.rows("dispatch_regionsum", since=latest - timedelta(hours=2)) if r[2] == 0), 0, 3)
     rooftop = _latest_by_region(store.rows("rooftop_pv", since=latest - timedelta(hours=6)), 0, 3)
+
+    hour_start, hour_end = last_full_hour(latest)
 
     regions = {}
     for region, name in REGIONS.items():
@@ -183,6 +207,7 @@ def derive(store, now=None, sample=False, lookback_days=LOOKBACK_DAYS, persist_d
         regions[region] = {
             "name": name,
             "current": current,
+            "last_hour": hour_average(vals, hour_start, hour_end),
             "today": {
                 "intervals": t.n,
                 "avg": _r(t.avg), "min": _r(t.lo), "max": _r(t.hi),
