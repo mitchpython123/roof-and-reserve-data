@@ -12,7 +12,8 @@ history of 5-minute prices, and publishes a summary for each NEM region.
 2. The job downloads new AEMO files (5-minute prices and demand, daily final prices,
    rooftop solar estimates and the latest 30-minute pre-dispatch (P30) forecast) and adds
    them to the data store. Only the newest P30 run is kept, as `store/predispatch_latest.json`.
-3. It then writes `nem-latest.json` and pushes it, with the store, to the **`data` branch**.
+3. It refreshes the half-hour profile for the last few days, writes `nem-latest.json` and
+   `nem-profile.json`, and pushes them, with the store, to the **`data` branch**.
 4. The widget on the website reads that file straight from GitHub:
    `https://raw.githubusercontent.com/mitchpython123/roof-and-reserve-data/data/nem-latest.json`
 
@@ -72,6 +73,24 @@ the browser's `rr_nem_region` setting, and use the same styling and hover defini
 
 The feed still publishes `today.negative_intervals`, but neither widget shows it any more.
 
+### A typical day, month by month (`nem-profile.json`)
+
+The Market snapshot widget also reads `nem-profile.json` (same folder as `nem-latest.json`),
+built from the half-hour profile table rather than the raw 5-minute data. For each region and
+the last 13 calendar months (the current month marked `partial`), by clock hour from midnight:
+
+| Field | Meaning |
+| --- | --- |
+| `price` | Average wholesale price, $/MWh |
+| `neg` | Share of 5-minute intervals below $0/MWh, % |
+| `solar`, `demand` | Average rooftop solar output and operational demand, MW |
+| `avg`, `midday_avg`, `evening_avg`, `gap` | Month averages; gap is evening (5pm to 9pm) minus midday (10am to 3pm) |
+| `negative_hours` | Hours in the month with a negative price |
+| `spike_intervals` | 5-minute intervals above $300/MWh |
+
+`recent` gives the same typical day over the last 28 complete market days. Only complete market
+days (at least 280 of 288 prices) count.
+
 All times are NEM time (AEST, UTC+10 all year). Prices are wholesale, not retail.
 
 ## STC price for the rebate calculator
@@ -93,15 +112,33 @@ file is more than a week old:
   its own script, so update that fallback (`var STC = {...}`) now and then.
 - To refresh by hand: `python -m rr_nem stc --data-dir data --force`.
 
+## The store
+
+Raw tables (`dispatch_price`, `dispatch_regionsum`, `rooftop_pv`) are kept as one gzip CSV per
+calendar day, so an hourly run only rewrites today's small files. The summary tables
+(`daily_stats`, and `profile30`: one row per region per half hour of each market day) are kept
+per month. The old month files are split into day files automatically the first time the new
+code runs.
+
+**History.** The **Backfill history** workflow (Actions tab → Backfill history → Run workflow,
+with first and last month) loads AEMO's archived 5-minute prices, demand and rooftop solar from
+NEMWEB, then rebuilds the summaries. It shares the hourly job's lock, so they never overlap.
+Calendar 2026 takes about five minutes and adds roughly 8 MB. To run it on your own computer:
+`python -m rr_nem backfill --from 2026-01 --to 2026-10 --data-dir data`.
+
+**Retention.** Each hourly run moves raw day files older than 400 days to the `archive` branch
+(`python -m rr_nem prune`). At about 4 MB of raw data a year this first matters in 2027. The
+summary tables are never pruned.
+
 ## Layout
 
 | Path | Purpose |
 | --- | --- |
-| `rr_nem/` | The pipeline: download (`fetch.py`, `ingest.py`), read AEMO files (`mms.py`), store (`store.py`) and summarise (`derive.py`); `stc.py` refreshes the STC price |
+| `rr_nem/` | The pipeline: download (`fetch.py`, `ingest.py`, `backfill.py`), read AEMO files (`mms.py`), store (`store.py`), summarise (`derive.py`, `profile.py`); `stc.py` refreshes the STC price |
 | `tests/` | Unit tests: `python3 -m unittest discover -s tests -t .` |
 | `widget/widget.html` | Source of the widget. The live copy sits in a Custom HTML block on the home page |
 | `widget/sample-nem-latest.json`, `widget/preview.html` | Invented sample data and a local preview page |
-| `scripts/` | `make_sample.py` and `build_preview.py` for the preview, and `backfill_nemosis.py` for loading history |
+| `scripts/` | `make_sample.py` and `build_preview.py` for the preview |
 
 ## Previewing the widget locally
 

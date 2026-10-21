@@ -66,12 +66,12 @@ class TestParsing(unittest.TestCase):
 
 
 class TestStore(TmpDirTest):
-    def test_upsert_replaces_same_key_and_splits_months(self):
+    def test_upsert_replaces_same_key_and_splits_days(self):
         a = datetime(2026, 9, 30, 23, 55)
         b = datetime(2026, 10, 1, 0, 5)
         self.store.upsert("dispatch_price", [(a, "NSW1", 0, 10.0), (b, "NSW1", 0, 20.0)])
         self.store.upsert("dispatch_price", [(b, "NSW1", 0, 25.5), (b, "NSW1", 1, 99.0)])
-        self.assertEqual(self.store.months("dispatch_price"), ["2026-09", "2026-10"])
+        self.assertEqual(self.store.parts("dispatch_price"), ["2026-09-30", "2026-10-01"])
         rows = sorted(self.store.rows("dispatch_price"))
         self.assertEqual(rows, [(a, "NSW1", 0, 10.0), (b, "NSW1", 0, 25.5), (b, "NSW1", 1, 99.0)])
         self.assertEqual(self.store.max_first("dispatch_price"), b)
@@ -80,7 +80,7 @@ class TestStore(TmpDirTest):
     def test_files_are_byte_identical_when_content_unchanged(self):
         rows = [(datetime(2026, 10, 1, 0, 5), "NSW1", 0, 20.0)]
         self.store.upsert("dispatch_price", rows)
-        path = self.store.path("dispatch_price", "2026-10")
+        path = self.store.path("dispatch_price", "2026-10-01")
         with open(path, "rb") as fh:
             first = fh.read()
         self.store.upsert("dispatch_price", rows)
@@ -249,12 +249,13 @@ class TestDerive(TmpDirTest):
     def test_incomplete_days_are_not_counted(self):
         fill_store(self.store, date(2026, 10, 13), date(2026, 10, 16), until=datetime(2026, 10, 16, 8, 0))
         # damage the 15th: keep only its first 100 intervals
-        month = self.store._read_file("dispatch_price", "2026-10")
         first_kept_end = datetime(2026, 10, 15, 4, 0) + timedelta(minutes=5 * 100)
         day_end = datetime(2026, 10, 16, 4, 0)
-        keep = {k: v for k, v in month.items()
-                if not (first_kept_end < datetime.strptime(k[0], "%Y-%m-%d %H:%M:%S") <= day_end)}
-        self.store._write_file("dispatch_price", "2026-10", keep)
+        for part in ("2026-10-15", "2026-10-16"):
+            rows = self.store._read_file("dispatch_price", part)
+            keep = {k: v for k, v in rows.items()
+                    if not (first_kept_end < datetime.strptime(k[0], "%Y-%m-%d %H:%M:%S") <= day_end)}
+            self.store._write_file("dispatch_price", part, keep)
         days = [d["date"] for d in derive(self.store, now=NOW)["regions"]["NSW1"]["last7"]["by_day"]]
         self.assertEqual(days, ["2026-10-13", "2026-10-14"])
 

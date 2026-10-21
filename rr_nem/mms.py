@@ -19,7 +19,8 @@ from .common import REGIONS
 # 5-minute dispatch prices appear as DISPATCH/PRICE in the live dispatch files and as
 # DREGION in the daily Public_Prices files.
 PRICE_TABLES = {("DREGION", ""), ("DISPATCH", "PRICE")}
-DEMAND_TABLES = {("DISPATCH", "REGIONSUM")}
+# Regional demand: DISPATCH/REGIONSUM in the live dispatch files, DREGION in the daily files.
+DEMAND_TABLES = {("DISPATCH", "REGIONSUM"), ("DREGION", "")}
 ROOFTOP_TABLES = {("ROOFTOP", "ACTUAL")}
 # 30-minute pre-dispatch (P30) forecasts: price and demand per region per half hour.
 PREDISPATCH_PRICE = ("PREDISPATCH", "REGION_PRICES")
@@ -83,7 +84,7 @@ def extract_prices(data):
 
 
 def extract_demand(data):
-    """[(settlement_ts, region_id, intervention, total demand MW)] from a dispatch zip."""
+    """[(settlement_ts, region_id, intervention, total demand MW)] from a dispatch or daily zip."""
     out = []
     for row in _rows(data, DEMAND_TABLES):
         region = row.get("REGIONID", "").strip()

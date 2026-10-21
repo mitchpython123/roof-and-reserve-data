@@ -120,6 +120,78 @@ def rebuild_daily(store, since=None):
     return store.upsert("daily_stats", _daily_rows(daily))
 
 
+# ---- half-hour profile (store table profile30) ---------------------------------------------
+SPIKE = 300.0  # $/MWh: a 5-minute price above this counts as a spike
+
+
+def _slot_of(ts, length):
+    """(market_day, slot) of an interval stamped with its END time and `length` long."""
+    start = ts - length
+    day = (start - timedelta(hours=MARKET_DAY_START_HOUR)).date()
+    slot = int((start - market_day_start(day)).total_seconds() // 1800)
+    return day, slot
+
+
+def profile_rows(prices, demand=(), rooftop=()):
+    """Build profile30 rows from raw data.
+
+    prices:  (settlement_ts, region, rrp) for the non-intervention run
+    demand:  (settlement_ts, region, totaldemand) for the non-intervention run
+    rooftop: (interval_ts, region, type, power_mw); MEASUREMENT is preferred over other types
+    """
+    acc = {}
+    for ts, region, rrp in prices:
+        day, slot = _slot_of(ts, INTERVAL)
+        a = acc.get((day, region, slot))
+        if a is None:
+            a = acc[(day, region, slot)] = [0, 0.0, rrp, rrp, 0, 0, 0.0, 0, None, None]
+        a[0] += 1
+        a[1] += rrp
+        a[2] = min(a[2], rrp)
+        a[3] = max(a[3], rrp)
+        a[4] += rrp < 0
+        a[5] += rrp > SPIKE
+    for ts, region, mw in demand:
+        day, slot = _slot_of(ts, INTERVAL)
+        a = acc.get((day, region, slot))
+        if a is not None:
+            a[6] += mw
+            a[7] += 1
+    for ts, region, kind, mw in rooftop:
+        day, slot = _slot_of(ts, HALF_HOUR)
+        a = acc.get((day, region, slot))
+        if a is None:
+            continue
+        rank = 0 if kind == "MEASUREMENT" else 1
+        if a[9] is None or rank < a[9]:
+            a[8], a[9] = mw, rank
+    return [(day, region, slot, a[0], a[1] / a[0], a[2], a[3], a[4], a[5],
+             a[6] / a[7] if a[7] else None, a[8])
+            for (day, region, slot), a in sorted(acc.items())]
+
+
+def rebuild_profile(store, since=None, until=None):
+    """Recompute profile30 from the raw tables, a month at a time. Returns rows written."""
+    total = 0
+    months = sorted(set(p[:7] for p in store.parts("dispatch_price")))
+    for month in months:
+        first = date.fromisoformat(month + "-01")
+        nxt = date(first.year + (first.month == 12), first.month % 12 + 1, 1)
+        if (since and nxt <= since) or (until and first > until):
+            continue
+        start = market_day_start(max(first, since) if since else first)
+        end = market_day_start(min(nxt, until + timedelta(days=1)) if until else nxt)
+        rows = profile_rows(
+            ((ts, rg, rrp) for ts, rg, iv, rrp in store.rows("dispatch_price", since=start)
+             if iv == 0 and rg in REGIONS and ts <= end),
+            ((ts, rg, mw) for ts, rg, iv, mw in store.rows("dispatch_regionsum", since=start)
+             if iv == 0 and ts <= end),
+            (r for r in store.rows("rooftop_pv", since=start) if r[0] <= end + HALF_HOUR))
+        rows = [r for r in rows if market_day_start(r[0]) >= start and market_day_start(r[0]) < end]
+        total += store.upsert("profile30", rows)
+    return total
+
+
 def _latest_by_region(rows, ts_index, value_index):
     best = {}
     for row in rows:
@@ -260,7 +332,21 @@ def derive(store, now=None, sample=False, lookback_days=LOOKBACK_DAYS, persist_d
 
     daily = accumulate_daily((ts, region, rrp) for region, vals in series.items() for ts, rrp in vals)
     if persist_daily:
-        store.upsert("daily_stats", _daily_rows(daily))
+        # The window starts at 04:00, so the day before it still picks up the one interval
+        # stamped exactly 04:00. Only save days that lie wholly inside the window, or that
+        # day's statistics would be overwritten with a single interval.
+        first_full = today - timedelta(days=lookback_days)
+        store.upsert("daily_stats", [r for r in _daily_rows(daily) if r[0] >= first_full])
+        # refresh the half-hour profile for the last few market days (AEMO's final prices for
+        # a day arrive the next morning, and rooftop estimates can lag a few hours)
+        if not store.parts("profile30"):
+            rebuild_profile(store)  # first run after the profile table was added
+        recent = today - timedelta(days=3)
+        store.upsert("profile30", [row for row in profile_rows(
+            ((ts, region, rrp) for region, vals in series.items() for ts, rrp in vals),
+            ((ts, rg, mw) for ts, rg, iv, mw in store.rows("dispatch_regionsum", since=market_day_start(recent))
+             if iv == 0),
+            store.rows("rooftop_pv", since=market_day_start(recent))) if row[0] >= recent])
 
     # half-hour price shapes, by market day (today's feeds the chart, earlier ones the spread)
     start_today = market_day_start(today)

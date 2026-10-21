@@ -49,6 +49,27 @@ jobs:
         continue-on-error: true   # the rebate calculator falls back to its built-in price
         run: python -m rr_nem stc --data-dir data
 
+      - name: Move raw days older than 400 days to the archive branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m rr_nem prune --data-dir data --keep-days 400 --archive-dir archive-out
+          if [ -d archive-out ] && [ -n "$(ls -A archive-out)" ]; then
+            url="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+            if git ls-remote --exit-code --heads origin archive >/dev/null 2>&1; then
+              git clone --quiet --depth 1 --branch archive "$url" archive
+            else
+              mkdir archive && git -C archive init --quiet -b archive
+            fi
+            cp -r archive-out/. archive/
+            cd archive
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit --quiet -m "Archive raw NEM data"
+            git push --quiet "$url" archive
+          fi
+
       - name: Publish the data branch
         env:
           GH_TOKEN: ${{ github.token }}

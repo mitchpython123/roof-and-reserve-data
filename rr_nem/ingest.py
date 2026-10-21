@@ -94,6 +94,7 @@ def ingest_daily_prices(store, fetcher, now, lookback_days=14):
         rows = extract_prices(blob)
         if rows:
             store.upsert("dispatch_price", rows)
+            store.upsert("dispatch_regionsum", extract_demand(blob))
             done.add(day.isoformat())
             fetched += 1
     state["daily_prices_finalised"] = sorted(done)[-90:]
