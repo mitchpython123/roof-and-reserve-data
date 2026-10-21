@@ -373,6 +373,15 @@ class TestPredispatch(TmpDirTest):
         self.assertEqual((sp["low"]["start"], sp["low"]["end"]), ("2026-10-15T10:00:00+10:00", "2026-10-15T13:00:00+10:00"))
         self.assertEqual((sp["high"]["start"], sp["high"]["avg"]), ("2026-10-15T17:00:00+10:00", 200.0))
 
+    def test_best_spread_ignores_hours_after_midnight(self):
+        fill_store(self.store, date(2026, 10, 14), date(2026, 10, 16), until=datetime(2026, 10, 16, 8, 0))
+        # make 15 Oct's 1am-4am block (next calendar morning) dearer than its evening peak
+        night = [(datetime(2026, 10, 16, 1, 0) + timedelta(minutes=5 * k), r, 0, 900.0)
+                 for k in range(1, 37) for r in REGIONS]
+        self.store.upsert("dispatch_price", night)
+        sp = derive(self.store, now=NOW)["regions"]["NSW1"]["best_spread_last_day"]
+        self.assertEqual((sp["date"], sp["high"]["start"], sp["spread"]), ("2026-10-15", "2026-10-15T17:00:00+10:00", 210.0))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,9 +10,10 @@ Definitions (all in NEM time, AEST all year):
   * Gap          evening average minus midday average, over the last 7 days.
   * Last hour    the most recent complete clock hour in the store (for example 09:00-10:00),
                  averaged over its twelve 5-minute prices. Needs at least 6 of the 12.
-  * Best spread  for the most recent complete market day: the cheapest 3-hour block of
-                 half-hour prices, and the dearest 3-hour block that starts after it ends,
-                 chosen to make the difference as large as possible. 3 hours is the time the
+  * Best spread  for the most recent complete market day, from 4am to midnight only (the
+                 hours after midnight are left out, so the windows match a household's day):
+                 the cheapest 3-hour block of half-hour prices, and the dearest 3-hour block
+                 that starts after it ends, chosen to make the difference as large as possible. 3 hours is the time the
                  site's 13.5 kWh / 5 kW reference battery needs to fill or empty (2.7 hours),
                  rounded up to whole half hours. A price spread only: no losses or fees.
   * Outlook      from AEMO's latest 30-minute pre-dispatch (P30) run: the average forecast
@@ -35,6 +36,7 @@ COMPLETE_MIN = 280
 SLOTS = 48  # half-hour slots in a market day
 HOUR_MIN_INTERVALS = 6  # of 12, before an hourly average is published
 SPREAD_SLOTS = 6  # half hours in a spread window (3 hours, see "Best spread" above)
+SPREAD_END_SLOT = 40  # half hours from 4am to midnight
 SLOT_MIN_INTERVALS = 4  # of 6, before a half-hour average is used for the spread
 OUTLOOK_PERIODS = 4  # half-hour P30 periods in the outlook (2 hours)
 STEADY_MIN = 10.0  # $/MWh
@@ -176,7 +178,7 @@ def _spread_summary(day, slots, width=SPREAD_SLOTS):
     start = market_day_start(day)
     window = lambda k, avg: {"start": iso_nem(start + k * HALF_HOUR),
                              "end": iso_nem(start + (k + width) * HALF_HOUR), "avg": _r(avg)}
-    return {"date": day.isoformat(), "hours": width / 2, "spread": _r(high - low),
+    return {"date": day.isoformat(), "hours": width / 2, "window": "04:00-24:00", "spread": _r(high - low),
             "low": window(i, low), "high": window(j, high)}
 
 
@@ -324,7 +326,7 @@ def derive(store, now=None, sample=False, lookback_days=LOOKBACK_DAYS, persist_d
         if complete:
             day = complete[0][0]
             slots = [sm / n if n >= SLOT_MIN_INTERVALS else None
-                     for sm, n in shapes.get((region, day), empty)]
+                     for sm, n in shapes.get((region, day), empty)[:SPREAD_END_SLOT]]
             spread = _spread_summary(day, slots)
         base = last_hour["avg"] if last_hour else price_now
         region_outlook = None

@@ -63,7 +63,7 @@ slow.
 | Negative prices today | Time priced below $0/MWh since 4am |
 | Latest demand and rooftop solar | The most recent figures AEMO has published |
 | Evening vs midday | Average 5pm to 9pm price minus average 10am to 3pm price, over the last 7 complete days |
-| Best spread (`best_spread_last_day`) | Last complete market day: cheapest 3-hour block, and the dearest 3-hour block starting after it, chosen to maximise the difference. 3 hours suits the 13.5 kWh / 5 kW reference battery. Price spread only, no losses |
+| Best spread (`best_spread_last_day`) | Last complete market day, 4am to midnight only (after midnight is left out so the windows match a household's day): cheapest 3-hour block, and the dearest 3-hour block starting after it, chosen to maximise the difference. 3 hours suits the 13.5 kWh / 5 kW reference battery. Price spread only, no losses |
 | Outlook (`outlook`) | AEMO's latest P30 forecast: average price over the next four half hours that have not started, against the last hour's average. Rising or falling if the difference is more than $10/MWh or 10%, otherwise steady. Also forecast demand change, today's highest forecast half hour, and the forecast by half hour for the chart (`forecast30`). Left out if the forecast run is over 2 hours old |
 | Chart | Today's price by half hour, with the P30 forecast for the rest of the day |
 
