@@ -54,18 +54,23 @@ running soon after the hour closes. AEMO's files for the interval ending on the 
 normally out within a few minutes; the 22-minute run is a retry in case AEMO or GitHub was
 slow.
 
-## What the widget shows
+## What the widgets show
+
+The feed drives two widgets: the price card on the home page and the fuller "NEM at a glance"
+widget on the Market snapshot page (`widget/widget.html`). Both share the chosen state through
+the browser's `rr_nem_region` setting, and use the same styling and hover definitions.
 
 | Figure | Meaning |
 | --- | --- |
 | Last hour's average price | Average of the twelve 5-minute prices in the most recent complete clock hour, in $/MWh and c/kWh |
+| Rising, falling or steady (`outlook`) | AEMO's latest P30 forecast: average price over the next four half hours that have not started, against the last hour's average. Rising or falling if the difference is more than $10/MWh or 10%, otherwise steady. Also forecast demand change, today's highest forecast half hour (`peak_today`), and the forecast by half hour for the charts (`forecast30`). Left out if the forecast run is over 2 hours old |
 | Today's average, low and high | Across the current market day, which runs 4am to 4am AEST |
-| Negative prices today | Time priced below $0/MWh since 4am |
-| Latest demand and rooftop solar | The most recent figures AEMO has published |
-| Evening vs midday | Average 5pm to 9pm price minus average 10am to 3pm price, over the last 7 complete days |
-| Best spread (`best_spread_last_day`) | Last complete market day, 4am to midnight only (after midnight is left out so the windows match a household's day): cheapest 3-hour block, and the dearest 3-hour block starting after it, chosen to maximise the difference. 3 hours suits the 13.5 kWh / 5 kW reference battery. Price spread only, no losses |
-| Outlook (`outlook`) | AEMO's latest P30 forecast: average price over the next four half hours that have not started, against the last hour's average. Rising or falling if the difference is more than $10/MWh or 10%, otherwise steady. Also forecast demand change, today's highest forecast half hour, and the forecast by half hour for the chart (`forecast30`). Left out if the forecast run is over 2 hours old |
-| Chart | Today's price by half hour, with the P30 forecast for the rest of the day |
+| Yesterday's spread (`best_spread_last_day`) | Last complete market day, 4am to midnight only (after midnight is left out so the windows match a household's day): cheapest 3-hour block, and the dearest 3-hour block starting after it, chosen to maximise the difference. 3 hours suits the 13.5 kWh / 5 kW reference battery. Price spread only, no losses |
+| Evening vs midday | Average 5pm to 9pm price minus average 10am to 3pm price, over the last 7 complete days (snapshot page) |
+| Latest demand and rooftop solar | The most recent figures AEMO has published (snapshot page) |
+| Chart | Today's price by half hour, with the P30 forecast for the rest of the day as a dashed line and a hover readout |
+
+The feed still publishes `today.negative_intervals`, but neither widget shows it any more.
 
 All times are NEM time (AEST, UTC+10 all year). Prices are wholesale, not retail.
 
