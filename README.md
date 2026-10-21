@@ -74,11 +74,30 @@ The feed still publishes `today.negative_intervals`, but neither widget shows it
 
 All times are NEM time (AEST, UTC+10 all year). Prices are wholesale, not retail.
 
+## STC price for the rebate calculator
+
+The [battery rebate calculator](https://roofandreserve.com/battery-rebate-calculator/) uses the
+market price of small-scale technology certificates (STCs) behind the scenes. Each hourly run
+also calls `python -m rr_nem stc`, which refreshes `stc-price.json` on the `data` branch when the
+file is more than a week old:
+
+```json
+{"price": 39.85, "as_of": "2026-10-19", "trades": 25, "currency": "AUD",
+ "source": "Demand Manager STC spot trades", "fetched_at": "2026-10-21T09:00:00+10:00"}
+```
+
+- **Price:** the median of STC spot trades shown on Demand Manager's price page over the 30 days
+  to the latest trade. Trades outside $20 to $40 are ignored (the clearing house price is $40).
+- **If the source fails or changes layout,** the step logs a warning, keeps the existing file and
+  never fails the NEM update. If the file is missing, the calculator uses the price written into
+  its own script, so update that fallback (`var STC = {...}`) now and then.
+- To refresh by hand: `python -m rr_nem stc --data-dir data --force`.
+
 ## Layout
 
 | Path | Purpose |
 | --- | --- |
-| `rr_nem/` | The pipeline: download (`fetch.py`, `ingest.py`), read AEMO files (`mms.py`), store (`store.py`) and summarise (`derive.py`) |
+| `rr_nem/` | The pipeline: download (`fetch.py`, `ingest.py`), read AEMO files (`mms.py`), store (`store.py`) and summarise (`derive.py`); `stc.py` refreshes the STC price |
 | `tests/` | Unit tests: `python3 -m unittest discover -s tests -t .` |
 | `widget/widget.html` | Source of the widget. The live copy sits in a Custom HTML block on the home page |
 | `widget/sample-nem-latest.json`, `widget/preview.html` | Invented sample data and a local preview page |

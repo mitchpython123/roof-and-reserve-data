@@ -1,4 +1,4 @@
-"""Command line: python -m rr_nem <update | derive | rebuild-daily> [options]"""
+"""Command line: python -m rr_nem <update | derive | rebuild-daily | stc> [options]"""
 
 import argparse
 import os
@@ -9,6 +9,7 @@ from .common import now_nem
 from .derive import DeriveError, derive, rebuild_daily, write_json
 from .fetch import Fetcher
 from .ingest import IngestError, run_update
+from .stc import refresh_stc_price
 from .store import Store
 
 
@@ -29,7 +30,14 @@ def main(argv=None):
     rb.add_argument("--data-dir", default="data")
     rb.add_argument("--since", help="only from this date, YYYY-MM-DD")
 
+    st = sub.add_parser("stc", help="refresh the market STC price for the rebate calculator (weekly)")
+    st.add_argument("--data-dir", default="data")
+    st.add_argument("--force", action="store_true", help="refresh even if the file is under a week old")
+
     args = parser.parse_args(argv)
+    if args.cmd == "stc":
+        print(refresh_stc_price(args.data_dir, Fetcher(), now_nem(), force=args.force))
+        return 0
     store = Store(args.data_dir)
     try:
         if args.cmd == "update":

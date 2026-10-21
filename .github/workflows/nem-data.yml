@@ -45,6 +45,10 @@ jobs:
           RR_CONTACT: ${{ vars.RR_CONTACT }}
         run: python -m rr_nem update --data-dir data
 
+      - name: Refresh the STC price (at most weekly)
+        continue-on-error: true   # the rebate calculator falls back to its built-in price
+        run: python -m rr_nem stc --data-dir data
+
       - name: Publish the data branch
         env:
           GH_TOKEN: ${{ github.token }}
