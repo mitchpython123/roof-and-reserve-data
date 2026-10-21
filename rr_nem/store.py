@@ -173,3 +173,20 @@ class Store:
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(state, fh, indent=1, sort_keys=True)
         os.replace(tmp, self._state_path())
+
+    # ---- small JSON documents kept beside the tables (e.g. the latest forecast) ---
+    def _json_path(self, name):
+        return os.path.join(self.base, f"{name}.json")
+
+    def load_json(self, name):
+        try:
+            with open(self._json_path(name), encoding="utf-8") as fh:
+                return json.load(fh)
+        except (OSError, ValueError):
+            return None
+
+    def save_json(self, name, data):
+        tmp = self._json_path(name) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, separators=(",", ":"), sort_keys=True)
+        os.replace(tmp, self._json_path(name))

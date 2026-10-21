@@ -7,6 +7,9 @@ Three feeds:
                          each day appears shortly after 04:00 the next morning). Used to fill
                          gaps and to replace our live copy of a day with AEMO's final numbers.
   * ROOFTOP_PV/ACTUAL    30-minute estimates of rooftop solar output by region.
+  * PredispatchIS_Reports  AEMO's 30-minute pre-dispatch (P30) run, every half hour: forecast
+                         price and demand per region to the end of the next market day. Only
+                         the newest run is needed, so it is kept as a single small JSON file.
 
 Every upsert is idempotent, so re-fetching a file is always safe.
 """
@@ -14,16 +17,19 @@ Every upsert is idempotent, so re-fetching a file is always safe.
 import sys
 from datetime import datetime, timedelta
 
-from .mms import extract_demand, extract_prices, extract_rooftop
+from .common import iso_nem
+from .mms import extract_demand, extract_predispatch, extract_prices, extract_rooftop
 
 BASE = "https://nemweb.com.au/Reports/Current/"
 DISPATCH_DIR = BASE + "DispatchIS_Reports/"
 PRICES_DIR = BASE + "Public_Prices/"
 ROOFTOP_DIR = BASE + "ROOFTOP_PV/ACTUAL/"
+PREDISPATCH_DIR = BASE + "PredispatchIS_Reports/"
 
 DISPATCH_PATTERN = r"PUBLIC_DISPATCHIS_(\d{12})_\d+\.zip$"
 PRICES_PATTERN = r"PUBLIC_PRICES_(\d{8})0000_\d+\.zip$"
 ROOFTOP_PATTERN = r"PUBLIC_ROOFTOP_PV_ACTUAL_MEASUREMENT_(\d{14})_\d+\.zip$"
+PREDISPATCH_PATTERN = r"PUBLIC_PREDISPATCHIS_(\d{12})_(\d{14})\.zip$"
 
 
 class IngestError(RuntimeError):
@@ -110,12 +116,35 @@ def ingest_rooftop(store, fetcher, max_files=48):
     return {"rooftop_files": len(wanted), "rooftop_rows": len(rows)}
 
 
+def ingest_predispatch(store, fetcher):
+    """Keep the newest P30 pre-dispatch forecast. Skips the download if we already have it."""
+    files = fetcher.list_files(PREDISPATCH_DIR, PREDISPATCH_PATTERN)
+    if not files:
+        return {"predispatch": "none listed"}
+    name, groups = max(files, key=lambda item: (item[1][1], item[0]))  # newest by creation time
+    held = store.load_json("predispatch_latest")
+    if held and held.get("file") == name:
+        return {"predispatch": "unchanged"}
+    fetcher.polite()
+    rows = extract_predispatch(fetcher.get(PREDISPATCH_DIR + name))
+    if not rows:
+        return {"predispatch": "no rows read"}
+    store.save_json("predispatch_latest", {
+        "file": name,
+        "created": iso_nem(datetime.strptime(groups[1], "%Y%m%d%H%M%S")),
+        "periods": [[iso_nem(ts), region, round(rrp, 2), None if dem is None else round(dem, 1)]
+                    for ts, region, rrp, dem in rows],
+    })
+    return {"predispatch": name, "predispatch_rows": len(rows)}
+
+
 def run_update(store, fetcher, now):
     """Run every feed. Only the dispatch feed is critical; the others warn and carry on."""
     summary = ingest_dispatch(store, fetcher)
     for label, step in (
         ("daily prices", lambda: ingest_daily_prices(store, fetcher, now)),
         ("rooftop solar", lambda: ingest_rooftop(store, fetcher)),
+        ("pre-dispatch", lambda: ingest_predispatch(store, fetcher)),
     ):
         try:
             summary.update(step())

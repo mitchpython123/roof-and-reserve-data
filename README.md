@@ -9,8 +9,9 @@ history of 5-minute prices, and publishes a summary for each NEM region.
 1. **Every hour**, at 7 and 22 minutes past, a cron job on the website hosting (cPanel) asks
    GitHub to start the Action in `.github/workflows/nem-data.yml`, which runs
    `python -m rr_nem update`. See "Scheduling" below.
-2. The job downloads new AEMO files (5-minute prices and demand, daily final prices and
-   rooftop solar estimates) and adds them to the data store.
+2. The job downloads new AEMO files (5-minute prices and demand, daily final prices,
+   rooftop solar estimates and the latest 30-minute pre-dispatch (P30) forecast) and adds
+   them to the data store. Only the newest P30 run is kept, as `store/predispatch_latest.json`.
 3. It then writes `nem-latest.json` and pushes it, with the store, to the **`data` branch**.
 4. The widget on the website reads that file straight from GitHub:
    `https://raw.githubusercontent.com/mitchpython123/roof-and-reserve-data/data/nem-latest.json`
@@ -62,7 +63,9 @@ slow.
 | Negative prices today | Time priced below $0/MWh since 4am |
 | Latest demand and rooftop solar | The most recent figures AEMO has published |
 | Evening vs midday | Average 5pm to 9pm price minus average 10am to 3pm price, over the last 7 complete days |
-| Chart | Today's price by half hour |
+| Best spread (`best_spread_last_day`) | Last complete market day: cheapest 3-hour block, and the dearest 3-hour block starting after it, chosen to maximise the difference. 3 hours suits the 13.5 kWh / 5 kW reference battery. Price spread only, no losses |
+| Outlook (`outlook`) | AEMO's latest P30 forecast: average price over the next four half hours that have not started, against the last hour's average. Rising or falling if the difference is more than $10/MWh or 10%, otherwise steady. Also forecast demand change, today's highest forecast half hour, and the forecast by half hour for the chart (`forecast30`). Left out if the forecast run is over 2 hours old |
+| Chart | Today's price by half hour, with the P30 forecast for the rest of the day |
 
 All times are NEM time (AEST, UTC+10 all year). Prices are wholesale, not retail.
 

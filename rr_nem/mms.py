@@ -21,6 +21,9 @@ from .common import REGIONS
 PRICE_TABLES = {("DREGION", ""), ("DISPATCH", "PRICE")}
 DEMAND_TABLES = {("DISPATCH", "REGIONSUM")}
 ROOFTOP_TABLES = {("ROOFTOP", "ACTUAL")}
+# 30-minute pre-dispatch (P30) forecasts: price and demand per region per half hour.
+PREDISPATCH_PRICE = ("PREDISPATCH", "REGION_PRICES")
+PREDISPATCH_DEMAND = ("PREDISPATCH", "REGION_SOLUTION")
 
 
 def parse_ts(value):
@@ -105,3 +108,24 @@ def extract_rooftop(data):
         except (KeyError, ValueError):
             continue
     return out
+
+
+def extract_predispatch(data):
+    """[(period_end_ts, region_id, forecast rrp $/MWh, forecast total demand MW)] from a
+    PredispatchIS zip. Only the non-intervention run (INTERVENTION = 0) is kept. A period
+    is stamped with the time it ENDS, like dispatch intervals.
+    """
+    prices, demand = {}, {}
+    for row in _rows(data, {PREDISPATCH_PRICE, PREDISPATCH_DEMAND}):
+        region = row.get("REGIONID", "").strip()
+        if region not in REGIONS or _intervention(row) != 0:
+            continue
+        try:
+            ts = parse_ts(row["DATETIME"])
+            if "RRP" in row:
+                prices[(ts, region)] = float(row["RRP"])
+            elif "TOTALDEMAND" in row:
+                demand[(ts, region)] = float(row["TOTALDEMAND"])
+        except (KeyError, ValueError):
+            continue
+    return [(ts, region, rrp, demand.get((ts, region))) for (ts, region), rrp in sorted(prices.items())]

@@ -7,10 +7,10 @@ from datetime import date, datetime, timedelta
 from rr_nem import ingest
 from rr_nem.__main__ import main
 from rr_nem.common import REGIONS, market_day_of, market_day_start
-from rr_nem.derive import DeriveError, derive, rebuild_daily
-from rr_nem.mms import extract_demand, extract_prices, extract_rooftop, parse_mms
+from rr_nem.derive import DeriveError, best_spread, derive, rebuild_daily
+from rr_nem.mms import extract_demand, extract_predispatch, extract_prices, extract_rooftop, parse_mms
 from rr_nem.store import Store
-from tests.helpers import (DISPATCH_DIR, PRICES_DIR, ROOFTOP_DIR, FakeFetcher, daily_name, daily_prices_zip,
+from tests.helpers import (PREDISPATCH_DIR, predispatch_name, predispatch_zip, DISPATCH_DIR, PRICES_DIR, ROOFTOP_DIR, FakeFetcher, daily_name, daily_prices_zip,
                            dispatch_name, dispatch_zip, fill_store, make_zip, rooftop_name, rooftop_zip)
 
 NOW = datetime(2026, 10, 16, 8, 0, 0)  # NEM time
@@ -297,6 +297,81 @@ class TestDerive(TmpDirTest):
 
     def test_cli_reports_error_on_empty_store(self):
         self.assertEqual(main(["derive", "--data-dir", self.root, "--out", os.path.join(self.root, "x.json")]), 1)
+
+
+class TestSpread(unittest.TestCase):
+    def test_cheapest_block_then_dearest_later_block(self):
+        slots = [50.0] * 48
+        slots[12:18] = [-10.0] * 6
+        slots[26:32] = [200.0] * 6
+        self.assertEqual(best_spread(slots), (12, 26, -10.0, 200.0))
+
+    def test_dear_block_must_come_after_cheap_block(self):
+        slots = [50.0] * 48
+        slots[0:6] = [300.0] * 6   # dear, but before anything cheap
+        slots[30:36] = [0.0] * 6   # cheap, with nothing dearer after it
+        i, j, low, high = best_spread(slots)
+        self.assertGreaterEqual(j, i + 6)
+        self.assertEqual(high - low, 50.0)  # 0 -> 50 beats any pair that reaches back to 300
+
+    def test_gaps_are_skipped(self):
+        slots = [None] * 48
+        self.assertIsNone(best_spread(slots))
+        slots[0:6] = [10.0] * 6
+        slots[10:16] = [90.0] * 6
+        self.assertEqual(best_spread(slots), (0, 10, 10.0, 90.0))
+
+
+class TestPredispatch(TmpDirTest):
+    def test_parse_keeps_non_intervention_known_regions(self):
+        rows = extract_predispatch(predispatch_zip(datetime(2026, 10, 16, 8, 0), {"NSW1": [60, 80]}))
+        self.assertEqual(rows, [(datetime(2026, 10, 16, 8, 30), "NSW1", 60.0, 7100.0),
+                                (datetime(2026, 10, 16, 9, 0), "NSW1", 80.0, 7200.0)])
+
+    def test_newest_run_is_saved_once(self):
+        fetcher = FakeFetcher()
+        fetcher.add(PREDISPATCH_DIR, predispatch_name(datetime(2026, 10, 16, 7, 30)),
+                    predispatch_zip(datetime(2026, 10, 16, 7, 30), {"NSW1": [1, 2]}))
+        newest = predispatch_name(datetime(2026, 10, 16, 8, 0))
+        fetcher.add(PREDISPATCH_DIR, newest, predispatch_zip(datetime(2026, 10, 16, 8, 0), {"NSW1": [3, 4]}))
+        self.assertEqual(ingest.ingest_predispatch(self.store, fetcher)["predispatch"], newest)
+        held = self.store.load_json("predispatch_latest")
+        self.assertEqual([p[2] for p in held["periods"]], [3.0, 4.0])
+        self.assertEqual(ingest.ingest_predispatch(self.store, fetcher)["predispatch"], "unchanged")
+        self.assertEqual(len(fetcher.downloads(PREDISPATCH_DIR)), 1)
+
+    def save_forecast(self, created, start, prices, demand=7000.0):
+        periods = [[(start + timedelta(minutes=30 * (k + 1))).strftime("%Y-%m-%dT%H:%M:%S+10:00"), r, p, demand + 100 * k]
+                   for r in REGIONS for k, p in enumerate(prices)]
+        self.store.save_json("predispatch_latest", {"file": "x", "created": created.strftime("%Y-%m-%dT%H:%M:%S+10:00"),
+                                                   "periods": periods})
+
+    def test_outlook_rising_with_demand_and_chart_slots(self):
+        fill_store(self.store, date(2026, 10, 14), date(2026, 10, 16), until=datetime(2026, 10, 16, 8, 0))
+        self.store.upsert("dispatch_regionsum", [(datetime(2026, 10, 16, 8, 0), r, 0, 7000.0) for r in REGIONS])
+        # last hour (07:00-08:00) averages 50; next two hours forecast 70, 90, 110, 130 -> avg 100
+        self.save_forecast(datetime(2026, 10, 16, 7, 32), datetime(2026, 10, 16, 8, 0), [70, 90, 110, 130, 40])
+        out = derive(self.store, now=NOW)["regions"]["NSW1"]["outlook"]
+        self.assertEqual((out["direction"], out["forecast_avg"], out["base"], out["change"]), ("rising", 100.0, 50.0, 50.0))
+        self.assertEqual(out["horizon_end"], "2026-10-16T10:00:00+10:00")
+        self.assertEqual(out["demand_change_pct"], 4.3)  # 7300 at 10:00 vs 7000 now
+        self.assertEqual(out["forecast30"][8:13], [70.0, 90.0, 110.0, 130.0, 40.0])  # 08:00 slot = (8-4)*2
+        self.assertEqual(out["peak_today"]["start"], "2026-10-16T09:30:00+10:00")
+
+    def test_outlook_steady_and_stale(self):
+        fill_store(self.store, date(2026, 10, 14), date(2026, 10, 16), until=datetime(2026, 10, 16, 8, 0))
+        self.save_forecast(datetime(2026, 10, 16, 7, 32), datetime(2026, 10, 16, 8, 0), [55, 52, 48, 45])
+        self.assertEqual(derive(self.store, now=NOW)["regions"]["NSW1"]["outlook"]["direction"], "steady")
+        self.save_forecast(datetime(2026, 10, 16, 5, 0), datetime(2026, 10, 16, 8, 0), [500, 500, 500, 500])
+        self.assertIsNone(derive(self.store, now=NOW)["regions"]["NSW1"]["outlook"])
+
+    def test_best_spread_for_last_complete_day(self):
+        fill_store(self.store, date(2026, 10, 14), date(2026, 10, 16), until=datetime(2026, 10, 16, 8, 0))
+        sp = derive(self.store, now=NOW)["regions"]["NSW1"]["best_spread_last_day"]
+        self.assertEqual(sp["date"], "2026-10-15")
+        self.assertEqual(sp["spread"], 210.0)
+        self.assertEqual((sp["low"]["start"], sp["low"]["end"]), ("2026-10-15T10:00:00+10:00", "2026-10-15T13:00:00+10:00"))
+        self.assertEqual((sp["high"]["start"], sp["high"]["avg"]), ("2026-10-15T17:00:00+10:00", 200.0))
 
 
 if __name__ == "__main__":

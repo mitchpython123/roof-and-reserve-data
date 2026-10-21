@@ -10,6 +10,17 @@ Definitions (all in NEM time, AEST all year):
   * Gap          evening average minus midday average, over the last 7 days.
   * Last hour    the most recent complete clock hour in the store (for example 09:00-10:00),
                  averaged over its twelve 5-minute prices. Needs at least 6 of the 12.
+  * Best spread  for the most recent complete market day: the cheapest 3-hour block of
+                 half-hour prices, and the dearest 3-hour block that starts after it ends,
+                 chosen to make the difference as large as possible. 3 hours is the time the
+                 site's 13.5 kWh / 5 kW reference battery needs to fill or empty (2.7 hours),
+                 rounded up to whole half hours. A price spread only: no losses or fees.
+  * Outlook      from AEMO's latest 30-minute pre-dispatch (P30) run: the average forecast
+                 price over the next 2 hours (the next four half-hour periods that start
+                 after the latest dispatch interval) against the last hour's average. "Steady" means
+                 within $10/MWh or 10% of the last hour's average, whichever is larger.
+                 Demand change is the forecast demand at the end of those 2 hours against
+                 the latest 5-minute demand. Ignored if the forecast run is over 2 hours old.
 """
 
 import json
@@ -23,6 +34,13 @@ LOOKBACK_DAYS = 15
 COMPLETE_MIN = 280
 SLOTS = 48  # half-hour slots in a market day
 HOUR_MIN_INTERVALS = 6  # of 12, before an hourly average is published
+SPREAD_SLOTS = 6  # half hours in a spread window (3 hours, see "Best spread" above)
+SLOT_MIN_INTERVALS = 4  # of 6, before a half-hour average is used for the spread
+OUTLOOK_PERIODS = 4  # half-hour P30 periods in the outlook (2 hours)
+STEADY_MIN = 10.0  # $/MWh
+STEADY_FRACTION = 0.10
+FORECAST_MAX_AGE = timedelta(hours=2)
+HALF_HOUR = timedelta(minutes=30)
 
 
 class DeriveError(RuntimeError):
@@ -128,6 +146,101 @@ def hour_average(values, start, end):
             "intervals": len(prices)}
 
 
+def best_spread(slots, width=SPREAD_SLOTS):
+    """slots: half-hour average prices for one day (None where too thin).
+
+    Returns (low_start, high_start, low_avg, high_avg) for the cheapest `width`-slot block
+    and the dearest block starting at or after its end, maximising high minus low. Ties go
+    to the earliest blocks. None if no pair of complete blocks exists.
+    """
+    blocks = []
+    for i in range(len(slots) - width + 1):
+        window = slots[i:i + width]
+        blocks.append(None if any(v is None for v in window) else sum(window) / width)
+    best = None
+    for i, low in enumerate(blocks):
+        if low is None:
+            continue
+        for j in range(i + width, len(blocks)):
+            high = blocks[j]
+            if high is not None and (best is None or high - low > best[3] - best[2]):
+                best = (i, j, low, high)
+    return best
+
+
+def _spread_summary(day, slots, width=SPREAD_SLOTS):
+    found = best_spread(slots, width)
+    if found is None:
+        return None
+    i, j, low, high = found
+    start = market_day_start(day)
+    window = lambda k, avg: {"start": iso_nem(start + k * HALF_HOUR),
+                             "end": iso_nem(start + (k + width) * HALF_HOUR), "avg": _r(avg)}
+    return {"date": day.isoformat(), "hours": width / 2, "spread": _r(high - low),
+            "low": window(i, low), "high": window(j, high)}
+
+
+def _forecast_by_region(store, latest):
+    """{region: [(period_end, rrp, demand)]} for P30 periods starting at or after `latest`
+    (the half hour already under way is left out), plus the run's creation time."""
+    held = store.load_json("predispatch_latest")
+    if not held or not held.get("periods"):
+        return {}, None
+    created = datetime.strptime(held["created"][:19], "%Y-%m-%dT%H:%M:%S")
+    if created < latest - FORECAST_MAX_AGE:
+        return {}, None
+    out = {}
+    for end, region, rrp, dem in held["periods"]:
+        end_ts = datetime.strptime(end[:19], "%Y-%m-%dT%H:%M:%S")
+        if end_ts - HALF_HOUR >= latest and region in REGIONS:  # periods not yet started
+            out.setdefault(region, []).append((end_ts, rrp, dem))
+    for periods in out.values():
+        periods.sort()
+    return out, created
+
+
+def outlook(periods, base, demand_now, today, created):
+    """Summarise the P30 forecast for one region. base: last hour's average price."""
+    ahead = periods[:OUTLOOK_PERIODS]
+    if len(ahead) < 2 or base is None:
+        return None
+    avg = sum(rrp for _, rrp, _ in ahead) / len(ahead)
+    change = avg - base
+    if abs(change) < max(STEADY_MIN, STEADY_FRACTION * abs(base)):
+        direction = "steady"
+    else:
+        direction = "rising" if change > 0 else "falling"
+    end_ts, _, dem_end = ahead[-1]
+    demand_change = None
+    if dem_end is not None and demand_now:
+        demand_change = _r((dem_end - demand_now) / demand_now * 100, 1)
+    start_today = market_day_start(today)
+    forecast30 = [None] * SLOTS
+    peak = None
+    for p_end, rrp, _ in periods:
+        slot = int(((p_end - HALF_HOUR) - start_today).total_seconds() // 1800)
+        if 0 <= slot < SLOTS:
+            forecast30[slot] = _r(rrp)
+            if peak is None or rrp > peak[1]:
+                peak = (p_end, rrp)
+    return {
+        "source": "AEMO 30-minute pre-dispatch (P30)",
+        "run_created": iso_nem(created),
+        "horizon_end": iso_nem(end_ts),
+        "periods": len(ahead),
+        "forecast_avg": _r(avg),
+        "base": _r(base),
+        "change": _r(change),
+        "direction": direction,
+        "demand_now": _r(demand_now, 1),
+        "demand_at_horizon": _r(dem_end, 1),
+        "demand_change_pct": demand_change,
+        "peak_today": None if peak is None else {"start": iso_nem(peak[0] - HALF_HOUR), "end": iso_nem(peak[0]),
+                                                  "price": _r(peak[1])},
+        "forecast30": forecast30,
+    }
+
+
 def derive(store, now=None, sample=False, lookback_days=LOOKBACK_DAYS, persist_daily=True):
     """Build the widget JSON (as a dict) from the store, and refresh recent daily_stats."""
     latest = store.max_first("dispatch_price")
@@ -147,23 +260,25 @@ def derive(store, now=None, sample=False, lookback_days=LOOKBACK_DAYS, persist_d
     if persist_daily:
         store.upsert("daily_stats", _daily_rows(daily))
 
-    # half-hour price shape for the current market day
+    # half-hour price shapes, by market day (today's feeds the chart, earlier ones the spread)
     start_today = market_day_start(today)
-    shape = {region: [[0.0, 0] for _ in range(SLOTS)] for region in REGIONS}
+    shapes = {}
     for region, vals in series.items():
         for ts, rrp in vals:
-            if market_day_of(ts) != today:
-                continue
-            slot = int(((ts - INTERVAL) - start_today).total_seconds() // 1800)
+            day = market_day_of(ts)
+            slot = int(((ts - INTERVAL) - market_day_start(day)).total_seconds() // 1800)
             if 0 <= slot < SLOTS:
-                shape[region][slot][0] += rrp
-                shape[region][slot][1] += 1
+                acc = shapes.setdefault((region, day), [[0.0, 0] for _ in range(SLOTS)])[slot]
+                acc[0] += rrp
+                acc[1] += 1
+    empty = [[0.0, 0] for _ in range(SLOTS)]
 
     demand = _latest_by_region(
         (r for r in store.rows("dispatch_regionsum", since=latest - timedelta(hours=2)) if r[2] == 0), 0, 3)
     rooftop = _latest_by_region(store.rows("rooftop_pv", since=latest - timedelta(hours=6)), 0, 3)
 
     hour_start, hour_end = last_full_hour(latest)
+    forecast, forecast_created = _forecast_by_region(store, latest)
 
     regions = {}
     for region, name in REGIONS.items():
@@ -204,17 +319,32 @@ def derive(store, now=None, sample=False, lookback_days=LOOKBACK_DAYS, persist_d
             current["rooftop_pv_mw"] = _r(rooftop[region][1], 1)
             current["rooftop_as_at"] = iso_nem(rooftop[region][0])
 
+        last_hour = hour_average(vals, hour_start, hour_end)
+        spread = None
+        if complete:
+            day = complete[0][0]
+            slots = [sm / n if n >= SLOT_MIN_INTERVALS else None
+                     for sm, n in shapes.get((region, day), empty)]
+            spread = _spread_summary(day, slots)
+        base = last_hour["avg"] if last_hour else price_now
+        region_outlook = None
+        if region in forecast:
+            region_outlook = outlook(forecast[region], base, demand.get(region, (None, None))[1],
+                                     today, forecast_created)
+
         regions[region] = {
             "name": name,
             "current": current,
-            "last_hour": hour_average(vals, hour_start, hour_end),
+            "last_hour": last_hour,
             "today": {
                 "intervals": t.n,
                 "avg": _r(t.avg), "min": _r(t.lo), "max": _r(t.hi),
                 "negative_intervals": t.neg,
-                "shape30": [_r(s / n) if n else None for s, n in shape[region]],
+                "shape30": [_r(sm / n) if n else None for sm, n in shapes.get((region, today), empty)],
             },
             "last7": last7,
+            "best_spread_last_day": spread,
+            "outlook": region_outlook,
         }
 
     return {

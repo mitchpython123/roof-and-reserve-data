@@ -135,6 +135,30 @@ class FakeFetcher(Fetcher):
 DISPATCH_DIR = ingest.DISPATCH_DIR
 PRICES_DIR = ingest.PRICES_DIR
 ROOFTOP_DIR = ingest.ROOFTOP_DIR
+PREDISPATCH_DIR = ingest.PREDISPATCH_DIR
+
+
+def predispatch_name(run):
+    return f"PUBLIC_PREDISPATCHIS_{run + timedelta(minutes=30):%Y%m%d%H%M}_{run + timedelta(minutes=2):%Y%m%d%H%M%S}.zip"
+
+
+def predispatch_zip(run, prices):
+    """A P30 file: prices {region: [rrp per half hour]} from the run time, demand 7100, 7200...
+    Adds an intervention row, an unknown region and an unrelated table, which must be ignored."""
+    pcols = ["PREDISPATCHSEQNO", "RUNNO", "REGIONID", "PERIODID", "INTERVENTION", "RRP", "EEP", "LASTCHANGED", "DATETIME"]
+    dcols = ["PREDISPATCHSEQNO", "RUNNO", "REGIONID", "PERIODID", "INTERVENTION", "TOTALDEMAND", "DEMANDFORECAST",
+             "LASTCHANGED", "DATETIME"]
+    prow, drow = [], []
+    for region, values in prices.items():
+        for k, p in enumerate(values):
+            end = q(run + timedelta(minutes=30 * (k + 1)))
+            prow.append(["2026101601", "1", region, f"{k + 1:02d}", "0", str(p), "0", q(run), end])
+            drow.append(["2026101601", "1", region, f"{k + 1:02d}", "0", str(7100 + 100 * k), "0", q(run), end])
+            prow.append(["2026101601", "1", region, f"{k + 1:02d}", "1", "99999", "0", q(run), end])
+    prow.append(["2026101601", "1", "XYZ1", "01", "0", "5", "0", q(run), q(run + timedelta(minutes=30))])
+    other = ("PREDISPATCH", "CASE_SOLUTION", "1", ["PREDISPATCHSEQNO", "RUNNO"], [["2026101601", "1"]])
+    return make_zip(mms_csv([other, ("PREDISPATCH", "REGION_PRICES", "2", pcols, prow),
+                             ("PREDISPATCH", "REGION_SOLUTION", "9", dcols, drow)]))
 
 
 def fill_store(store, first_day, last_day, until, qld_offset=10.0):
