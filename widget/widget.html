@@ -1,49 +1,73 @@
 <!--
-  Roof & Reserve: "NEM at a glance" widget.
-  Paste this whole block into a WordPress Custom HTML block (or a WPCode "HTML snippet").
+  Roof & Reserve: "NEM at a glance" widget (Market snapshot page).
+  Styled to match the live price card on the home page: pill state buttons, the same
+  number style, hover definitions (the site's .rr-g style) and an AEMO P30 forecast line.
+  Paste this whole block into a WordPress Custom HTML block. On the live site the script
+  is stored as a base64 data: URL so WordPress cannot alter it (see the README).
   Before going live, set data-src to the web address of your nem-latest.json file.
 -->
 <div id="rr-nem" class="rr-nem" data-src="REPLACE_WITH_DATA_URL" data-default="NSW1" data-disclaimer="/disclaimer/">
   <noscript>Live market statistics need JavaScript to be switched on.</noscript>
 </div>
 <style>
-.rr-nem{--rr-teal:var(--wp--preset--color--contrast,#111);--rr-teal2:var(--wp--preset--color--contrast,#111);--rr-amber:var(--wp--preset--color--accent-3,#d8613c);
-  --rr-bg:var(--wp--preset--color--base,#f9f9f9);--rr-text:var(--wp--preset--color--contrast,#111);--rr-muted:var(--wp--preset--color--contrast-2,#636363);
-  --rr-line:var(--wp--preset--color--accent,#cfcabe);--rr-bar:var(--wp--preset--color--contrast-2,#636363);--rr-neg:var(--wp--preset--color--accent-3,#d8613c);
-  --rr-band1:color-mix(in srgb,var(--wp--preset--color--accent,#cfcabe) 35%,transparent);--rr-band2:color-mix(in srgb,var(--wp--preset--color--accent-5,#b5bdbc) 30%,transparent);
-  --rr-head:var(--wp--preset--font-family--heading,Cardo,serif);
-  box-sizing:border-box;max-width:760px;margin:0 auto 1.5rem;padding:20px;background:var(--wp--preset--color--base-2,#fff);color:var(--rr-text);
-  border:1px solid var(--rr-line);border-radius:16px;font-family:var(--wp--preset--font-family--body,inherit);line-height:1.45;text-align:left}
+.rr-nem{box-sizing:border-box;max-width:760px;margin:0 auto 1.5rem;padding:22px;background:#fff;color:#1c1c1c;border:1px solid #dde0da;
+  border-radius:10px;box-shadow:0 6px 24px rgba(28,28,28,.06);font-family:var(--wp--preset--font-family--body,Inter,sans-serif);
+  line-height:1.45;text-align:left;font-variant-numeric:tabular-nums}
 .rr-nem *{box-sizing:border-box}
-.rr-nem .rr-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:flex-end;justify-content:space-between}
-.rr-nem .rr-title{margin:0;font-family:var(--rr-head);font-size:24px;font-weight:400;color:var(--rr-teal)}
-.rr-nem .rr-sub{margin:2px 0 0;font-size:14px;color:var(--rr-muted)}
-.rr-nem .rr-pick label{display:block;margin-bottom:2px;font-size:13px;color:var(--rr-muted)}
-.rr-nem .rr-pick select{min-width:110px;max-width:100%;padding:6px 10px;font:inherit;font-size:16px;color:var(--rr-text);
-  background:var(--wp--preset--color--base-2,#fff);border:1px solid var(--rr-muted);border-radius:6px}
-.rr-nem select:focus-visible{outline:2px solid var(--rr-teal);outline-offset:2px}
-.rr-nem .rr-note{margin:12px 0 0;padding:8px 12px;font-size:14px;color:var(--rr-text);
-  background:color-mix(in srgb,var(--rr-amber) 10%,transparent);border:1px solid var(--rr-amber);border-radius:6px}
-.rr-nem .rr-hero{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;margin:2px 0 2px}
-.rr-nem .rr-kicker{margin:16px 0 0;font-size:14px;color:var(--rr-muted)}
-.rr-nem .rr-price{font-family:var(--rr-head);font-size:48px;font-weight:400;line-height:1.1;color:var(--rr-teal)}
-.rr-nem .rr-unit{font-family:var(--wp--preset--font-family--body,inherit);font-size:15px;font-weight:400;color:var(--rr-muted)}
-.rr-nem .rr-cents{font-size:15px}
-.rr-nem .rr-cmp{margin:0 0 14px;font-size:14px;color:var(--rr-muted)}
-.rr-nem .rr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0;padding:0}
-.rr-nem .rr-tile{margin:0;padding:12px 14px;background:var(--rr-bg);border-radius:8px}
-.rr-nem .rr-tile dt{margin:0;font-size:13px;color:var(--rr-muted)}
-.rr-nem .rr-tile dd{margin:0}
-.rr-nem .rr-val{font-family:var(--rr-head);font-size:26px;font-weight:400;color:var(--rr-teal)}
-.rr-nem .rr-small{font-size:13px;color:var(--rr-muted)}
-.rr-nem .rr-wide{grid-column:1/-1;border-left:4px solid var(--rr-amber)}
-.rr-nem .rr-chart{margin:18px 0 0}
-.rr-nem .rr-chart-title{margin:0 0 4px;font-family:var(--rr-head);font-size:18px;font-weight:400;color:var(--rr-teal)}
-.rr-nem .rr-chart svg{display:block;width:100%;height:auto;font-family:var(--wp--preset--font-family--body,inherit)}
-.rr-nem .rr-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:4px 0 0;font-size:13px;color:var(--rr-muted)}
-.rr-nem .rr-sw{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px;border-radius:2px}
-.rr-nem .rr-foot{margin:14px 0 0;font-size:13px;color:var(--rr-muted)}
-.rr-nem .rr-foot a{color:var(--rr-teal)}
+.rr-nem p{margin:0}
+.rr-nem .rr-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;justify-content:space-between}
+.rr-nem .rr-title{font-family:var(--wp--preset--font-family--heading,Cardo,serif);font-size:24px;font-weight:400;line-height:1.2}
+.rr-nem .rr-sub{margin-top:2px;font-size:14px;color:#5d625b}
+.rr-nem .rr-tabs{display:flex;flex-wrap:wrap;gap:4px}
+.rr-nem .rr-tabs button{font:inherit;font-size:.78rem;padding:4px 10px;border:1px solid #cfd3cc;background:#fff;border-radius:999px;cursor:pointer;color:#1c1c1c}
+.rr-nem .rr-tabs button[aria-pressed="true"]{background:#1c1c1c;color:#fff;border-color:#1c1c1c}
+.rr-nem .rr-tabs button:focus-visible{outline:2px solid #e09f22;outline-offset:2px}
+.rr-nem .rr-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#5d625b}
+.rr-nem .rr-g::after{text-transform:none;letter-spacing:normal;font-weight:400;font-size:13px;white-space:normal;text-align:left}
+.rr-nem .rr-kicker{margin-top:20px}
+.rr-nem .rr-price{margin-top:8px;font-size:2.6rem;font-weight:600;line-height:1;letter-spacing:-.01em}
+.rr-nem .rr-unit{font-size:1rem;font-weight:400;letter-spacing:0;color:#5d625b}
+.rr-nem .rr-cents,.rr-nem .rr-cmp{margin-top:4px;font-size:.85rem;color:#5d625b}
+.rr-nem .rr-dir{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin-top:10px;font-size:.85rem;line-height:1.4}
+.rr-nem .rr-pill{font-weight:600;font-size:.78rem;padding:2px 9px;border-radius:999px;background:#eef0ec;white-space:nowrap;text-decoration:none;cursor:help}
+.rr-nem .rr-pill.is-rising{background:#fde7bd;color:#6b4300}
+.rr-nem .rr-pill.is-falling{background:#dfeee4;color:#24543a}
+.rr-nem .rr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:18px 0 0;padding:0}
+.rr-nem .rr-tile{margin:0;padding:12px 14px;background:#f4f5f2;border-radius:8px}
+.rr-nem .rr-tile dt{margin:0}
+.rr-nem .rr-tile dd{margin:4px 0 0}
+.rr-nem .rr-val{font-size:1.25rem;font-weight:600}
+.rr-nem .rr-small{display:block;margin-top:2px;font-size:.8rem;color:#5d625b}
+.rr-nem .rr-note{margin-top:12px;padding:8px 12px;font-size:14px;background:#fdf3de;border:1px solid #f2b33d;border-radius:6px}
+.rr-nem .rr-chart{margin-top:22px}
+.rr-nem .rr-chart-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 10px;margin-bottom:10px}
+.rr-nem .rr-key{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:.75rem;color:#5d625b}
+.rr-nem .rr-key i{display:inline-block;width:14px;height:0;margin-right:4px;vertical-align:middle;border-top:2px solid #e09f22}
+.rr-nem .rr-key i.k2{border-top:2px dashed #5d625b}
+.rr-nem .rr-key i.k3{width:12px;height:10px;border:0;border-radius:2px;background:#eef0ec}
+.rr-nem .rr-sp{display:grid;grid-template-columns:44px 1fr;gap:8px}
+.rr-nem .rr-sp-y{position:relative;height:170px;font-size:.72rem;color:#5d625b}
+.rr-nem .rr-sp-y span{position:absolute;right:0;transform:translateY(-50%);white-space:nowrap;line-height:1}
+.rr-nem .rr-plot{position:relative;height:170px;cursor:crosshair;touch-action:pan-y;outline:none}
+.rr-nem .rr-plot:focus-visible{box-shadow:0 0 0 2px #e09f22;border-radius:4px}
+.rr-nem .rr-plot svg{display:block;width:100%;height:170px}
+.rr-nem .rr-band{position:absolute;top:2px;transform:translateX(-50%);font-size:.68rem;color:#5d625b;pointer-events:none}
+.rr-nem .rr-line{position:absolute;top:0;bottom:0;width:1px;background:#1c1c1c;opacity:.3;display:none;pointer-events:none}
+.rr-nem .rr-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:#e09f22;border:2px solid #fff;box-shadow:0 0 0 1px #e09f22;
+  transform:translate(-50%,-50%);display:none;pointer-events:none}
+.rr-nem .rr-dot.is-fc{background:#5d625b;box-shadow:0 0 0 1px #5d625b}
+.rr-nem .rr-tip{position:absolute;bottom:calc(100% + 6px);transform:translateX(-50%);background:#1c1c1c;color:#fff;font-size:.75rem;font-weight:600;
+  padding:4px 8px;border-radius:6px;white-space:pre;display:none;pointer-events:none;z-index:2}
+.rr-nem .rr-plot.is-hover .rr-line,.rr-nem .rr-plot.is-hover .rr-dot,.rr-nem .rr-plot.is-hover .rr-tip{display:block}
+.rr-nem .rr-axis{display:flex;justify-content:space-between;margin-top:4px;padding-left:52px;font-size:.72rem;color:#5d625b}
+.rr-nem .rr-capped{margin-top:6px;font-size:.75rem;color:#5d625b}
+.rr-nem .rr-foot{position:relative;display:flex;align-items:center;gap:6px;margin-top:18px;font-size:.78rem;color:#5d625b}
+.rr-nem .rr-info{position:static!important;display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;padding:0;
+  border-radius:50%;border:1px solid #9aa097;background:#fff;color:#5d625b;font:italic 600 11px/1 Georgia,serif;cursor:help;text-decoration:none!important}
+.rr-nem .rr-info:hover,.rr-nem .rr-info:focus-visible{border-color:#1c1c1c;color:#1c1c1c;outline:none}
+.rr-nem .rr-info::after{left:0!important;right:0;top:auto!important;bottom:100%;width:auto!important;margin:0 0 8px!important;
+  font:400 13px/1.45 var(--wp--preset--font-family--body,Inter,sans-serif)!important;font-style:normal!important}
+.rr-nem .rr-foot a{color:#1c1c1c}
 </style>
 <script>
 (function () {
@@ -56,16 +80,15 @@
   var DISCLAIMER = root.getAttribute('data-disclaimer') || '';
   var DEFAULT = root.getAttribute('data-default') || 'NSW1';
   var REGIONS = [
-    ['NSW1', 'New South Wales & ACT'], ['QLD1', 'Queensland'], ['VIC1', 'Victoria'],
-    ['SA1', 'South Australia'], ['TAS1', 'Tasmania']
+    ['NSW1', 'NSW', 'New South Wales & ACT'], ['QLD1', 'QLD', 'Queensland'], ['VIC1', 'VIC', 'Victoria'],
+    ['SA1', 'SA', 'South Australia'], ['TAS1', 'TAS', 'Tasmania']
   ];
   var NAMES = {};
-  REGIONS.forEach(function (r) { NAMES[r[0]] = r[1]; });
-  var STORE_KEY = 'rr_nem_region';
-  var CAP_HI = 500, CAP_LO = -150;   // chart axis limits, $/MWh
+  REGIONS.forEach(function (r) { NAMES[r[0]] = r[2]; });
+  var STORE_KEY = 'rr_nem_region';   // shared with the home page card
+  var CAP_HI = 500, CAP_LO = -150;   // chart limits, $/MWh (hover still shows the true value)
   var STALE_MIN = 150;               // warn if the data is older than this (the feed updates hourly)
   var REFRESH_MS = 900000;           // re-check for new data every 15 minutes
-  var TEAL = 'var(--rr-bar)', AMBER = 'var(--rr-neg)', MUTED = 'var(--rr-muted)';
 
   var data = null, failed = false;
   var region = NAMES[DEFAULT] ? DEFAULT : 'NSW1';
@@ -76,110 +99,137 @@
 
   var nf0 = new Intl.NumberFormat('en-AU', { maximumFractionDigits: 0 });
   var nf1 = new Intl.NumberFormat('en-AU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-
+  function has(v) { return v !== null && v !== undefined && !isNaN(v); }
   function money(v) {
-    if (v === null || v === undefined || isNaN(v)) { return '–'; }
+    if (!has(v)) { return '–'; }
     var a = Math.abs(v);
     return (v < 0 ? '−' : '') + '$' + (a >= 100 ? nf0 : nf1).format(a);
   }
-  function signedMoney(v) {
-    if (v === null || v === undefined || isNaN(v)) { return '–'; }
-    return (v >= 0 ? '+' : '') + money(v);
+  function cents(v, unit) {
+    if (!has(v)) { return '–'; }
+    return (v < 0 ? '−' : '') + nf1.format(Math.abs(v) / 10) + 'c' + (unit === false ? '' : '/kWh');
   }
-  function cents(v) {
-    if (v === null || v === undefined || isNaN(v)) { return '–'; }
-    return (v < 0 ? '−' : '') + nf1.format(Math.abs(v) / 10) + 'c/kWh';
-  }
-  function mw(v) { return (v === null || v === undefined) ? '–' : nf0.format(v) + ' MW'; }
-  function clock(iso) {
+  function signedCents(v) { return has(v) ? (v < 0 ? '−' : '+') + nf1.format(Math.abs(v) / 10) + 'c/kWh' : '–'; }
+  function mw(v) { return has(v) ? nf0.format(v) + ' MW' : '–'; }
+  function when(iso) {   // "2pm", "5:30pm" from an ISO time in NEM time
     if (!iso) { return ''; }
-    var h = parseInt(iso.slice(11, 13), 10), m = iso.slice(14, 16);
-    var ap = h >= 12 ? 'pm' : 'am';
-    h = h % 12 || 12;
-    return h + ':' + m + ap;
-  }
-  function hour(iso) {
-    if (!iso) { return ''; }
-    var h = parseInt(iso.slice(11, 13), 10), m = iso.slice(14, 16);
-    var ap = h >= 12 ? 'pm' : 'am';
+    var h = parseInt(iso.slice(11, 13), 10), m = iso.slice(14, 16), ap = h >= 12 ? 'pm' : 'am';
     h = h % 12 || 12;
     return h + (m === '00' ? '' : ':' + m) + ap;
   }
-  function duration(intervals) {
-    var t = intervals * 5, h = Math.floor(t / 60), m = t % 60, parts = [];
-    if (!t) { return 'None so far'; }
-    if (h) { parts.push(h + ' h'); }
-    if (m) { parts.push(m + ' min'); }
-    return parts.join(' ');
-  }
-  function slotLabel(i) {
-    var mins = (240 + i * 30) % 1440, h = Math.floor(mins / 60), m = mins % 60;
-    var ap = h >= 12 ? 'pm' : 'am';
+  function slotTime(i) {
+    var mins = (240 + i * 30) % 1440, h = Math.floor(mins / 60), m = mins % 60, ap = h >= 12 ? 'pm' : 'am';
     h = h % 12 || 12;
-    return h + ':' + (m < 10 ? '0' : '') + m + ap;
+    return h + (m ? ':' + (m < 10 ? '0' : '') + m : '') + ap;
   }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  function def(text, label) { return '<span class="rr-g" tabindex="0" data-def="' + esc(text) + '">' + label + '</span>'; }
   function safeLink(href) { return /^(\/|https?:\/\/)/.test(href) ? href.replace(/["<>]/g, '') : ''; }
 
-  // ---- chart: today's price by half hour, from the 4am market-day start --------
-  function chart(r) {
-    var vals = (r.today && r.today.shape30) || [];
-    var bodyEl = document.getElementById('rr-nem-body');
-    var W = Math.max(300, Math.min(720, Math.round((bodyEl && bodyEl.clientWidth) || 360)));
-    var H = Math.round(Math.max(150, Math.min(230, W * 0.4))), L = 78, R = 6, T = 22, B = 24;
-    var pw = W - L - R, ph = H - T - B, bw = pw / 48;
-    var mn = Infinity, mx = -Infinity, i;
-    for (i = 0; i < vals.length; i++) {
-      if (vals[i] !== null && vals[i] !== undefined) { mn = Math.min(mn, vals[i]); mx = Math.max(mx, vals[i]); }
-    }
-    var hasData = isFinite(mn);
-    var hi = hasData ? Math.max(100, Math.min(mx, CAP_HI)) : 100;
-    var lo = hasData ? Math.min(0, Math.max(mn, CAP_LO)) : 0;
-    var clipped = hasData && (mx > CAP_HI || mn < CAP_LO);
-    function y(v) { return T + (hi - v) / (hi - lo) * ph; }
-    var y0 = y(0), s = '';
-    var win = data.windows || { midday: [10, 15], evening: [17, 21] };
-    [['Midday', win.midday, 'var(--rr-band1)'], ['Evening', win.evening, 'var(--rr-band2)']].forEach(function (b) {
+  var DEFS = {
+    hour: 'The average of the twelve 5-minute wholesale prices in the last full clock hour, for the state you have selected. Prices are in $/MWh (dollars per megawatt hour); divide by 10 for cents per kWh.',
+    dir: 'Compares the AEMO forecast average price for the next 2 hours with the last hour average. Steady means within $10/MWh or 10%, whichever is larger. Demand is the AEMO forecast for the end of those 2 hours against the latest 5-minute figure.',
+    avg: 'The average of every 5-minute wholesale price since 4am today (AEST), when the electricity market day starts, with the lowest and highest 5-minute prices so far.',
+    spread: 'The gap between yesterday’s cheapest 3 hours and the dearest 3 hours that came after them, between 4am and midnight. It shows how far prices moved through the day. Wholesale prices only, before battery losses or fees.',
+    peak: 'The highest half-hour price in the latest AEMO pre-dispatch (P30) forecast for the rest of today. It updates every 30 minutes and often changes.',
+    gap: 'The average 5pm to 9pm price minus the average 10am to 3pm price over the last 7 complete market days.',
+    demand: 'Operational demand: the power drawn from the grid across the region, as published by AEMO every 5 minutes. Electricity your rooftop solar supplies to your own home is not included.',
+    solar: 'The AEMO estimate of output from rooftop solar across the region, published every 30 minutes.',
+    chart: 'The average wholesale price for each half hour since 4am. The dashed line is the latest AEMO pre-dispatch (P30) forecast for the rest of the day. Shading marks the midday (10am to 3pm) and evening (5pm to 9pm) windows. Hover over the chart to read a value.',
+    info: 'These are wholesale prices from the National Electricity Market, taken from AEMO’s public data every hour. They are not what you pay: your bill adds network, environmental and retail charges, and your retailer sets your tariff and feed-in rate. Forecasts are AEMO pre-dispatch (P30) runs, updated every 30 minutes, and can change a lot. Western Australia and the Northern Territory are not part of the NEM. General information only, not financial advice.'
+  };
+
+  function tile(key, label, value, sub) {
+    return '<div class="rr-tile"><dt class="rr-label">' + def(DEFS[key], label) + '</dt><dd><span class="rr-val">' + value +
+      '</span><span class="rr-small">' + sub + '</span></dd></div>';
+  }
+
+  // ---- chart: today's half-hour prices, then the P30 forecast, with hover ------------------
+  function chartHtml(r) {
+    var s = (r.today && r.today.shape30) || [], f = (r.outlook && r.outlook.forecast30) || [];
+    var pts = [], fpts = [], i;
+    for (i = 0; i < s.length; i++) { if (has(s[i])) { pts.push([i, s[i], 0]); } }
+    if (pts.length < 2) { return '<div class="rr-chart"><p class="rr-small">Not enough of today’s prices yet to draw the chart.</p></div>'; }
+    for (i = 0; i < f.length; i++) { if (has(f[i]) && i > pts[pts.length - 1][0]) { fpts.push([i, f[i], 1]); } }
+    var all = pts.concat(fpts), vals = all.map(function (p) { return p[1]; });
+    var rawHi = Math.max.apply(null, vals), rawLo = Math.min.apply(null, vals);
+    var hi = Math.ceil(Math.min(rawHi, CAP_HI) / 10) * 10, lo = Math.floor(Math.min(0, Math.max(rawLo, CAP_LO)) / 10) * 10;
+    if (hi <= lo) { hi = lo + 10; }
+    var mid = (lo + hi) / 2, W = 470, H = 170, n = 47;
+    function yv(v) { v = Math.max(lo, Math.min(hi, v)); return H - 6 - (v - lo) / (hi - lo) * (H - 12); }
+    function x(k) { return (k / n * W).toFixed(1); }
+    function path(arr) { return arr.map(function (p, k) { return (k ? 'L' : 'M') + x(p[0]) + ' ' + yv(p[1]).toFixed(1); }).join(' '); }
+    var win = data.windows || { midday: [10, 15], evening: [17, 21] }, svg = '', bands = '';
+    [['Midday', win.midday], ['Evening', win.evening]].forEach(function (b) {
       var a = (b[1][0] - 4) * 2, z = (b[1][1] - 4) * 2;
-      s += '<rect x="' + (L + a * bw) + '" y="' + T + '" width="' + ((z - a) * bw) + '" height="' + ph + '" style="fill:' + b[2] + '"/>';
-      s += '<text x="' + (L + (a + z) / 2 * bw) + '" y="' + (T - 6) + '" text-anchor="middle" font-size="11" style="fill:' + MUTED + '">' + b[0] + '</text>';
+      svg += '<rect x="' + x(a) + '" y="0" width="' + ((z - a) / n * W).toFixed(1) + '" height="' + H + '" fill="#f4f5f2"/>';
+      bands += '<span class="rr-band" style="left:' + ((a + z) / 2 / n * 100).toFixed(1) + '%">' + b[0] + '</span>';
     });
-    for (i = 0; i < vals.length && i < 48; i++) {
-      var v = vals[i];
-      if (v === null || v === undefined) { continue; }
-      var cv = Math.max(lo, Math.min(hi, v)), top = y(Math.max(cv, 0)), bot = y(Math.min(cv, 0));
-      s += '<rect x="' + (L + i * bw + 0.5).toFixed(2) + '" y="' + top.toFixed(2) + '" width="' + (bw - 1).toFixed(2) +
-        '" height="' + Math.max(1, bot - top).toFixed(2) + '" style="fill:' + (v < 0 ? AMBER : TEAL) + '"><title>' +
-        slotLabel(i) + ': ' + money(v) + '/MWh</title></rect>';
-    }
-    s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y0.toFixed(2) + '" y2="' + y0.toFixed(2) + '" style="stroke:' + MUTED + '" stroke-width="0.75"/>';
-    s += '<text x="' + (L - 5) + '" y="' + (T + 4) + '" text-anchor="end" font-size="11" style="fill:' + MUTED + '">' + money(hi) + '/MWh</text>';
-    s += '<text x="' + (L - 5) + '" y="' + (y0 + 3.5).toFixed(2) + '" text-anchor="end" font-size="11" style="fill:' + MUTED + '">$0/MWh</text>';
+    [hi, mid, lo].forEach(function (v) {
+      svg += '<line x1="0" x2="' + W + '" y1="' + yv(v).toFixed(1) + '" y2="' + yv(v).toFixed(1) + '" stroke="#e6e8e3" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+    });
+    var base = yv(Math.max(lo, 0)).toFixed(1), d = path(pts);
+    svg += '<path d="' + d + ' L' + x(pts[pts.length - 1][0]) + ' ' + base + ' L' + x(pts[0][0]) + ' ' + base + ' Z" fill="rgba(242,179,61,.2)"/>';
     if (lo < 0) {
-      s += '<text x="' + (L - 5) + '" y="' + (T + ph + 3) + '" text-anchor="end" font-size="11" style="fill:' + MUTED + '">' + money(lo) + '/MWh</text>';
+      svg += '<line x1="0" x2="' + W + '" y1="' + yv(0).toFixed(1) + '" y2="' + yv(0).toFixed(1) + '" stroke="#9aa097" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"/>';
     }
-    [[0, '4am', 'start'], [12, '10am', 'middle'], [24, '4pm', 'middle'], [36, '10pm', 'middle'], [48, '4am', 'end']].forEach(function (t) {
-      s += '<text x="' + (L + t[0] * bw) + '" y="' + (H - 6) + '" text-anchor="' + t[2] + '" font-size="11" style="fill:' + MUTED + '">' + t[1] + '</text>';
+    if (fpts.length) {
+      svg += '<path d="' + path([pts[pts.length - 1]].concat(fpts)) + '" fill="none" stroke="#5d625b" stroke-width="1.5" stroke-dasharray="4 3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
+    }
+    svg += '<path d="' + d + '" fill="none" stroke="#e09f22" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
+    var capped = rawHi > CAP_HI || rawLo < CAP_LO;
+    chartState = { all: all, n: n, H: H, yv: yv, start: pts.length - 1 };
+    return '<div class="rr-chart"><div class="rr-chart-head"><p class="rr-label">' + def(DEFS.chart, 'Today, half-hourly (c/kWh)') + '</p>' +
+      '<p class="rr-key"><span><i></i>Actual</span>' + (fpts.length ? '<span><i class="k2"></i>AEMO forecast</span>' : '') +
+      '<span><i class="k3"></i>Midday and evening</span></p></div>' +
+      '<div class="rr-sp"><div class="rr-sp-y" aria-hidden="true">' +
+      '<span style="top:' + yv(hi).toFixed(1) + 'px">' + cents(hi, false) + '</span><span style="top:' + yv(mid).toFixed(1) + 'px">' + cents(mid, false) +
+      '</span><span style="top:' + yv(lo).toFixed(1) + 'px">' + cents(lo, false) + '</span></div>' +
+      '<div class="rr-plot" tabindex="0" role="img" aria-label="Line chart of the wholesale price today for ' + esc(NAMES[region]) +
+      ' in cents per kWh, half-hourly, with the AEMO forecast for the rest of the day. Hover or use the arrow keys to read values.">' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' + svg + '</svg>' + bands +
+      '<span class="rr-line"></span><span class="rr-dot"></span><span class="rr-tip" aria-live="polite"></span></div></div>' +
+      '<div class="rr-axis"><span>4am</span><span>10am</span><span>4pm</span><span>10pm</span><span>4am</span></div>' +
+      (capped ? '<p class="rr-capped">The chart is capped at ' + cents(CAP_HI) + ' and ' + cents(CAP_LO) + '; hover for the full price.</p>' : '') +
+      '</div>';
+  }
+
+  var chartState = null;
+  function wireChart() {
+    var plot = root.querySelector('.rr-plot');
+    if (!plot || !chartState) { return; }
+    var st = chartState, line = plot.querySelector('.rr-line'), dot = plot.querySelector('.rr-dot'), tip = plot.querySelector('.rr-tip'), cur = st.start;
+    function show(k) {
+      cur = Math.max(0, Math.min(st.all.length - 1, k));
+      var p = st.all[cur], w = plot.clientWidth, px = p[0] / st.n * w;
+      line.style.left = px + 'px'; dot.style.left = px + 'px'; dot.style.top = st.yv(p[1]) + 'px';
+      dot.className = 'rr-dot' + (p[2] ? ' is-fc' : '');
+      tip.textContent = slotTime(p[0]) + '  ' + cents(p[1]) + (p[2] ? ' forecast' : '');
+      tip.style.left = Math.max(60, Math.min(w - 60, px)) + 'px';
+      plot.classList.add('is-hover');
+    }
+    function at(ev) {
+      var b = plot.getBoundingClientRect(), i = (ev.clientX - b.left) / b.width * st.n, best = 0, j;
+      for (j = 1; j < st.all.length; j++) { if (Math.abs(st.all[j][0] - i) < Math.abs(st.all[best][0] - i)) { best = j; } }
+      show(best);
+    }
+    plot.addEventListener('pointermove', at);
+    plot.addEventListener('pointerdown', at);
+    plot.addEventListener('pointerleave', function () { if (document.activeElement !== plot) { plot.classList.remove('is-hover'); } });
+    plot.addEventListener('focus', function () { show(cur); });
+    plot.addEventListener('blur', function () { plot.classList.remove('is-hover'); });
+    plot.addEventListener('keydown', function (ev) {
+      if (ev.key === 'ArrowLeft') { show(cur - 1); ev.preventDefault(); }
+      else if (ev.key === 'ArrowRight') { show(cur + 1); ev.preventDefault(); }
     });
-    var label = hasData
-      ? 'Wholesale price by half hour since 4am for ' + NAMES[region] + ', from ' + money(mn) + ' to ' + money(mx) + ' per megawatt hour. Amber bars are negative prices.'
-      : 'No price data yet for today.';
-    return '<div class="rr-chart"><p class="rr-chart-title">Today’s wholesale price by half hour</p>' +
-      '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + label + '">' + s + '</svg>' +
-      '<div class="rr-legend"><span><i class="rr-sw" style="background:' + TEAL + '"></i>Price above $0/MWh</span>' +
-      '<span><i class="rr-sw" style="background:' + AMBER + '"></i>Negative price</span>' +
-      '<span>Shaded: midday and evening windows</span>' + (clipped ? '<span>Chart capped at ' + money(CAP_HI) + '/MWh and ' + money(CAP_LO) + '/MWh</span>' : '') +
-      '</div></div>';
   }
 
-  // ---- page ------------------------------------------------------------------
-  function tile(label, value, sub, extra) {
-    return '<div class="rr-tile' + (extra ? ' ' + extra : '') + '"><dt>' + label + '</dt><dd><span class="rr-val">' + value +
-      '</span><br><span class="rr-small">' + sub + '</span></dd></div>';
-  }
-
+  // ---- page --------------------------------------------------------------------------------
   function render() {
     var body = document.getElementById('rr-nem-body');
+    root.querySelectorAll('.rr-tabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-r') === region ? 'true' : 'false'); });
     if (!body) { return; }
+    chartState = null;
     if (!data) {
       body.innerHTML = failed
         ? '<p class="rr-note">Live market data is not available right now. Please check back shortly.</p>'
@@ -188,64 +238,68 @@
     }
     var r = data.regions && data.regions[region];
     if (!r) { body.innerHTML = '<p class="rr-note">There is no data for this region right now.</p>'; return; }
-    var c = r.current || {}, t = r.today || {}, l7 = r.last7, h = '';
+    var c = r.current || {}, t = r.today || {}, l7 = r.last7, sp = r.best_spread_last_day, o = r.outlook, h = '';
 
     if (data.sample) { h += '<p class="rr-note"><strong>Sample data.</strong> These numbers are invented for previewing the layout and are not live market data.</p>'; }
     var age = (Date.now() - Date.parse(data.data_as_at)) / 60000;
     if (!data.sample && !isNaN(age) && age > STALE_MIN) {
-      h += '<p class="rr-note">These figures may be out of date. The latest data is from ' + clock(data.data_as_at) + ' AEST.</p>';
+      h += '<p class="rr-note">These figures may be out of date. The latest data is from ' + when(data.data_as_at) + ' AEST.</p>';
     }
 
-    var lh = r.last_hour;
-    var useHour = !!(lh && lh.avg !== null && lh.avg !== undefined);
-    var price = useHour ? lh.avg : c.price;
-    var cmp = useHour ? hour(lh.start) + ' to ' + hour(lh.end) + ' AEST' : 'As at ' + clock(c.as_at) + ' AEST';
-    if (l7 && l7.avg !== null && l7.avg !== undefined && price !== null && price !== undefined) {
+    var lh = r.last_hour, useHour = !!(lh && has(lh.avg)), price = useHour ? lh.avg : c.price;
+    var cmp = useHour ? 'Average from ' + when(lh.start) + ' to ' + when(lh.end) + ' AEST' : 'As at ' + when(c.as_at) + ' AEST';
+    if (l7 && has(l7.avg) && has(price)) {
       cmp += ' · ' + (price >= l7.avg ? 'above' : 'below') + ' the 7-day average of ' + money(l7.avg) + '/MWh';
     }
-    h += '<p class="rr-kicker">' + (useHour ? 'Last hour’s average price' : 'Latest price') + '</p>' +
-      '<div class="rr-hero"><span class="rr-price">' + money(price) + '<span class="rr-unit"> /MWh</span></span>' +
-      '<span class="rr-cents">' + cents(price) + ' wholesale</span></div><p class="rr-cmp">' + cmp + '</p>';
+    h += '<p class="rr-label rr-kicker">' + def(DEFS.hour, useHour ? 'Last hour’s average price' : 'Latest price') + '</p>' +
+      '<p class="rr-price">' + money(price) + ' <span class="rr-unit">/MWh</span></p>' +
+      '<p class="rr-cents">' + cents(price) + ' wholesale</p><p class="rr-cmp">' + cmp + '</p>';
+
+    if (o && has(o.forecast_avg)) {
+      var A = { rising: '↑ Rising', falling: '↓ Falling', steady: '→ Steady' }, dc = o.demand_change_pct, dt = '';
+      if (has(dc)) { dt = dc >= 100 ? 'demand more than doubling' : (Math.abs(dc) < 5 ? 'demand steady' : 'demand ' + (dc > 0 ? 'up ' : 'down ') + Math.round(Math.abs(dc)) + '%'); }
+      h += '<p class="rr-dir"><span class="rr-pill rr-g is-' + esc(o.direction) + '" tabindex="0" data-def="' + esc(DEFS.dir) + '">' + (A[o.direction] || esc(o.direction)) +
+        '</span><span>Next 2 hours: AEMO forecasts ' + cents(o.forecast_avg) + ' on average to ' + when(o.horizon_end) + (dt ? ', ' + dt : '') + '.</span></p>';
+    }
 
     h += '<dl class="rr-grid">';
-    h += tile('Today’s average', money(t.avg) + '<span class="rr-unit"> /MWh</span>',
-      'Low ' + cents(t.min) + ' · High ' + cents(t.max));
-    h += tile('Negative prices today', duration(t.negative_intervals || 0), 'Time priced below $0/MWh since 4am');
-    h += tile('Latest demand', mw(c.demand_mw), c.demand_as_at ? 'As at ' + clock(c.demand_as_at) + ' AEST' : 'Total demand in the region');
-    h += tile('Latest rooftop solar', mw(c.rooftop_pv_mw),
-      c.rooftop_as_at ? 'Estimate as at ' + clock(c.rooftop_as_at) + ' AEST' : 'Not available');
-    if (l7 && l7.gap !== null && l7.gap !== undefined) {
-      h += tile('Evening vs midday, last ' + l7.days + ' days', signedMoney(l7.gap) + '<span class="rr-unit"> /MWh</span>',
-        'Midday average ' + money(l7.midday_avg) + '/MWh → evening average ' + money(l7.evening_avg) + '/MWh' +
-        ' (' + cents(Math.abs(l7.gap)) + ' gap). This is the spread a battery can try to capture, before efficiency losses and fees.', 'rr-wide');
-    } else {
-      h += tile('Evening vs midday', '–', 'Not enough history yet to compare.', 'rr-wide');
-    }
+    h += tile('avg', 'Today’s average', money(t.avg) + ' <span class="rr-unit">/MWh</span>', 'Low ' + cents(t.min) + ' · High ' + cents(t.max));
+    h += sp ? tile('spread', 'Yesterday’s spread', signedCents(sp.spread),
+      'Low ' + when(sp.low.start) + '–' + when(sp.low.end) + ', high ' + when(sp.high.start) + '–' + when(sp.high.end))
+      : tile('spread', 'Yesterday’s spread', '–', 'Not enough data for yesterday.');
+    var pk = o && o.peak_today;
+    h += pk ? tile('peak', 'Highest forecast today', cents(pk.price), 'Around ' + when(pk.start) + ' (AEMO forecast)')
+      : tile('peak', 'Highest forecast today', '–', 'No forecast available right now.');
+    h += (l7 && has(l7.gap)) ? tile('gap', 'Evening vs midday, 7 days', signedCents(l7.gap),
+      'Midday ' + cents(l7.midday_avg, false) + ', evening ' + cents(l7.evening_avg, false))
+      : tile('gap', 'Evening vs midday, 7 days', '–', 'Not enough history yet.');
+    h += tile('demand', 'Latest demand', mw(c.demand_mw), c.demand_as_at ? 'As at ' + when(c.demand_as_at) + ' AEST' : 'Not available');
+    h += tile('solar', 'Latest rooftop solar', mw(c.rooftop_pv_mw), c.rooftop_as_at ? 'Estimate as at ' + when(c.rooftop_as_at) + ' AEST' : 'Not available');
     h += '</dl>';
-    h += chart(r);
+    h += chartHtml(r);
 
     var link = safeLink(DISCLAIMER);
-    h += '<p class="rr-foot">Source: AEMO public market data, 4am-to-4am market day, updated hourly. ' +
-      'These are wholesale prices, not what you pay: your plan adds network and retail charges. ' +
-      'Western Australia and the Northern Territory are not part of the NEM. General information only' +
-      (link ? ' (<a href="' + link + '">disclaimer</a>)' : '') + '.</p>';
+    h += '<p class="rr-foot">Wholesale prices, updated hourly<button type="button" class="rr-g rr-info" data-def="' + esc(DEFS.info) +
+      '" aria-label="About these prices">i</button>' + (link ? '<span>· <a href="' + link + '">Disclaimer</a></span>' : '') + '</p>';
     body.innerHTML = h;
+    wireChart();
   }
 
   function build() {
-    var opts = REGIONS.map(function (r) {
-      return '<option value="' + r[0] + '"' + (r[0] === region ? ' selected' : '') + ' title="' + r[1] + '">' + r[0].replace(/1$/, '') + '</option>';
+    var tabs = REGIONS.map(function (r) {
+      return '<button type="button" data-r="' + r[0] + '" title="' + r[2] + '" aria-pressed="' + (r[0] === region) + '">' + r[1] + '</button>';
     }).join('');
     root.innerHTML =
       '<div class="rr-head"><div><p class="rr-title" role="heading" aria-level="2">NEM at a glance</p>' +
       '<p class="rr-sub">Wholesale electricity prices and conditions in your state</p></div>' +
-      '<div class="rr-pick"><label for="rr-nem-region">Choose your state</label>' +
-      '<select id="rr-nem-region">' + opts + '</select></div></div>' +
+      '<div class="rr-tabs" role="group" aria-label="Choose your state">' + tabs + '</div></div>' +
       '<div id="rr-nem-body" aria-live="polite"></div>';
-    document.getElementById('rr-nem-region').addEventListener('change', function (ev) {
-      region = ev.target.value;
-      try { window.localStorage.setItem(STORE_KEY, region); } catch (e) { /* ignore */ }
-      render();
+    root.querySelectorAll('.rr-tabs button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        region = b.getAttribute('data-r');
+        try { window.localStorage.setItem(STORE_KEY, region); } catch (e) { /* ignore */ }
+        render();
+      });
     });
     render();
   }
@@ -261,11 +315,6 @@
 
   build();
   load();
-  var resizeTimer;
-  window.addEventListener('resize', function () {
-    window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(function () { if (data) { render(); } }, 150);
-  });
   window.setInterval(function () { if (!document.hidden) { load(); } }, REFRESH_MS);
 })();
 </script>
