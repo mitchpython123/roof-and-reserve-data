@@ -89,6 +89,8 @@ class TestProfile(TmpStore):
         self.assertEqual(oct_["gap"], 210.0)
         self.assertEqual(oct_["negative_hours"], 15.0)  # 5 hours a day for 3 days
         self.assertEqual(feed["regions"]["QLD1"]["months"][0]["price"][0], 60.0)
+        recent = feed["regions"]["NSW1"]["recent"]
+        self.assertEqual((recent["from"], recent["to"], recent["days"]), ("2026-09-16", "2026-10-15", 3))
 
     def test_derive_does_not_overwrite_the_day_before_its_window(self):
         fill_store(self.store, date(2026, 9, 25), date(2026, 10, 16), until=NOW)

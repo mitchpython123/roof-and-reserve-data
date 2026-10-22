@@ -73,13 +73,14 @@
 .rr-nem .rr-seg button:focus-visible{outline:2px solid #e09f22;outline-offset:2px}
 .rr-nem .rr-heat{position:relative;outline:none}
 .rr-nem .rr-heat:focus-visible{box-shadow:0 0 0 2px #e09f22;border-radius:4px}
-.rr-nem .rr-hrow{display:grid;grid-template-columns:40px repeat(24,1fr);gap:2px;margin-bottom:2px;align-items:center}
+.rr-nem .rr-hrow{display:grid;grid-template-columns:52px repeat(24,1fr);gap:2px;margin-bottom:2px;align-items:center}
 .rr-nem .rr-hrow.is-sel .rr-hm{font-weight:600;color:#1c1c1c}
+.rr-nem .rr-hrow.is-recent{margin-top:8px}
 .rr-nem .rr-hm{font-size:.72rem;color:#5d625b;white-space:nowrap;cursor:pointer;padding-right:4px}
 .rr-nem .rr-hc{height:20px;border-radius:2px;cursor:crosshair}
 .rr-nem .rr-hc.is-none{background:repeating-linear-gradient(45deg,#f4f5f2 0 3px,#fff 3px 6px)}
 .rr-nem .rr-hc.is-hot{box-shadow:0 0 0 2px #1c1c1c;position:relative;z-index:1}
-.rr-nem .rr-haxis{display:grid;grid-template-columns:40px repeat(4,1fr);margin-top:4px;font-size:.72rem;color:#5d625b}
+.rr-nem .rr-haxis{display:grid;grid-template-columns:52px repeat(4,1fr);margin-top:4px;font-size:.72rem;color:#5d625b}
 .rr-nem .rr-haxis span{padding-left:2px}
 .rr-nem .rr-htip{position:absolute;transform:translate(-50%,-100%);margin-top:-8px;background:#1c1c1c;color:#fff;font-size:.75rem;font-weight:600;
   padding:4px 8px;border-radius:6px;white-space:pre;display:none;pointer-events:none;z-index:3}
@@ -169,7 +170,7 @@
     demand: 'Operational demand: the power drawn from the grid across the region, as published by AEMO every 5 minutes. Electricity your rooftop solar supplies to your own home is not included.',
     solar: 'The AEMO estimate of output from rooftop solar across the region, published every 30 minutes.',
     chart: 'The average wholesale price for each half hour since 4am. The dashed line is the latest AEMO pre-dispatch (P30) forecast for the rest of the day. Shading marks the midday (10am to 3pm) and evening (5pm to 9pm) windows. Hover over the chart to read a value.',
-    season: 'Each square is the average wholesale price for that clock hour across every complete market day in the month, in AEST. Hover over a square to read it, or choose a month to see its summary. The current month is shown so far.',
+    season: 'Each square is the average wholesale price for that clock hour across every complete market day in the month, in AEST. The bottom row is the last 30 days, rolling. Hover over a square to read it, or choose a month to see its summary. The current month is shown so far.',
     neg: 'How often the 5-minute wholesale price was below zero in that clock hour, across every complete market day in the month. Negative prices mostly happen in the middle of the day, when rooftop and large-scale solar output is high.',
     mgap: 'The average 5pm to 9pm price minus the average 10am to 3pm price for the month. It shows the gap a battery could try to capture, before losses and fees.',
     neghrs: 'The total time in the month when the 5-minute wholesale price was below zero, in hours.',
@@ -263,7 +264,7 @@
   }
 
   // ---- typical day by month (nem-profile.json) -----------------------------------------------
-  var profile = null, profileFailed = false, seasonMetric = 'price', seasonMonth = null;
+  var profile = null, profileFailed = false, seasonMetric = 'price', seasonMonth = 'recent';
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   var MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   // price bins in c/kWh, diverging around zero: blue below zero, a neutral step near zero, warm above
@@ -274,6 +275,17 @@
   function binOf(bins, v) { for (var i = 0; i < bins.length; i++) { if (v < bins[i][1]) { return bins[i]; } } return bins[bins.length - 1]; }
   function monthName(key, long) { var m = parseInt(key.slice(5, 7), 10) - 1; return (long ? MONTHS_LONG : MONTHS)[m] + (long ? ' ' + key.slice(0, 4) : ''); }
   function hourLabel(h) { var ap = h >= 12 ? 'pm' : 'am', k = h % 12 || 12; return k + ap; }
+  // the months, then the rolling last 30 days as a final row (selected by default)
+  function seasonRows(r) {
+    var rows = ((r && r.months) || []).slice();
+    if (r && r.recent && r.recent.days) {
+      var rec = {}; for (var k in r.recent) { rec[k] = r.recent[k]; }
+      rec.month = 'recent'; rec.recent = true; rows.push(rec);
+    }
+    return rows;
+  }
+  function rowName(m) { return m.recent ? '30 days' : monthName(m.month) + (m.partial ? '*' : ''); }
+  function dayName(iso) { return iso ? parseInt(iso.slice(8, 10), 10) + ' ' + MONTHS[parseInt(iso.slice(5, 7), 10) - 1] : ''; }
   function pct(v) { return has(v) ? (v < 1 && v > 0 ? '<1' : nf0.format(v)) + '%' : '–'; }
 
   function seasonHtml() {
@@ -284,13 +296,10 @@
     if (!profile) {
       return head + '<p class="rr-small">' + (profileFailed ? 'The monthly history is not available right now.' : 'Loading the monthly history…') + '</p></div>';
     }
-    var r = profile.regions && profile.regions[region], months = (r && r.months) || [];
+    var r = profile.regions && profile.regions[region], months = seasonRows(r);
     if (!months.length) { return head + '<p class="rr-small">There is no monthly history for this region yet.</p></div>'; }
     var keys = months.map(function (m) { return m.month; });
-    if (keys.indexOf(seasonMonth) < 0) {
-      var full = months.filter(function (m) { return !m.partial; });
-      seasonMonth = (full.length ? full[full.length - 1] : months[months.length - 1]).month;
-    }
+    if (keys.indexOf(seasonMonth) < 0) { seasonMonth = keys[keys.length - 1]; }
     var bins = seasonMetric === 'price' ? PRICE_BINS : NEG_BINS, field = seasonMetric === 'price' ? 'price' : 'neg';
     var h = head + '<p class="rr-season-sub">' + (seasonMetric === 'price'
       ? 'Average wholesale price by hour of the day, in c/kWh, for ' + esc(NAMES[region]) + '.'
@@ -298,8 +307,8 @@
     h += '<div class="rr-heat" tabindex="0" role="img" aria-label="Heat map of ' + (seasonMetric === 'price' ? 'the average wholesale price' : 'the share of negative prices') +
       ' by hour of the day for each month. Use the arrow keys to read values; the table below lists every figure.">';
     months.forEach(function (m, row) {
-      h += '<div class="rr-hrow' + (m.month === seasonMonth ? ' is-sel' : '') + '"><span class="rr-hm" data-month="' + esc(m.month) + '">' +
-        monthName(m.month) + (m.partial ? '*' : '') + '</span>';
+      h += '<div class="rr-hrow' + (m.month === seasonMonth ? ' is-sel' : '') + (m.recent ? ' is-recent' : '') + '"><span class="rr-hm" data-month="' + esc(m.month) + '">' +
+        rowName(m) + '</span>';
       for (var hr = 0; hr < 24; hr++) {
         var v = m[field] && m[field][hr];
         if (!has(v)) { h += '<span class="rr-hc is-none" data-r="' + row + '" data-h="' + hr + '"></span>'; continue; }
@@ -314,10 +323,11 @@
       (months.some(function (m) { return m.partial; }) ? '<span>* month so far</span>' : '') + '</p>';
 
     var sel = months[keys.indexOf(seasonMonth)];
-    h += '<p class="rr-label rr-msum">' + monthName(sel.month, true) + (sel.partial ? ' so far' : '') + ' · ' + sel.days + ' days</p><dl class="rr-grid rr-grid4">';
+    h += '<p class="rr-label rr-msum">' + (sel.recent ? 'Last 30 days, ' + dayName(sel.from) + ' to ' + dayName(sel.to) : monthName(sel.month, true) + (sel.partial ? ' so far' : '')) +
+      ' · ' + sel.days + ' days</p><dl class="rr-grid rr-grid4">';
     h += tile('avg', 'Average price', money(sel.avg) + ' <span class="rr-unit">/MWh</span>', cents(sel.avg) + ' wholesale');
     h += tile('mgap', 'Evening vs midday', signedCents(sel.gap), 'Midday ' + cents(sel.midday_avg, false) + ', evening ' + cents(sel.evening_avg, false));
-    h += tile('neghrs', 'Hours of negative prices', has(sel.negative_hours) ? nf0.format(sel.negative_hours) + ' hrs' : '–', 'Across the month');
+    h += tile('neghrs', 'Hours of negative prices', has(sel.negative_hours) ? nf0.format(sel.negative_hours) + ' hrs' : '–', sel.recent ? 'Across the 30 days' : 'Across the month');
     h += tile('spikes', 'Price spikes', has(sel.spike_intervals) ? nf0.format(sel.spike_intervals) : '–', '5-minute prices above 30c/kWh');
     h += '</dl>';
 
@@ -325,7 +335,7 @@
     for (var k = 0; k < 24; k++) { t += '<th scope="col">' + hourLabel(k) + '</th>'; }
     t += '</tr></thead><tbody>';
     months.forEach(function (m) {
-      t += '<tr><th scope="row">' + monthName(m.month, true) + (m.partial ? ' (so far)' : '') + '</th>';
+      t += '<tr><th scope="row">' + (m.recent ? 'Last 30 days' : monthName(m.month, true) + (m.partial ? ' (so far)' : '')) + '</th>';
       for (var k2 = 0; k2 < 24; k2++) {
         var v2 = m[field] && m[field][k2];
         t += '<td>' + (field === 'price' ? cents(v2, false) : pct(v2)) + '</td>';
@@ -348,7 +358,7 @@
     });
     var heat = box.querySelector('.rr-heat');
     if (!heat) { return; }
-    var months = profile.regions[region].months, tip = heat.querySelector('.rr-htip'), cur = null;
+    var months = seasonRows(profile.regions[region]), tip = heat.querySelector('.rr-htip'), cur = null;
     var cells = heat.querySelectorAll('.rr-hc');
     function show(row, hr) {
       row = Math.max(0, Math.min(months.length - 1, row)); hr = Math.max(0, Math.min(23, hr));
@@ -358,7 +368,7 @@
       if (!cur) { return; }
       cur.classList.add('is-hot');
       var hb = heat.getBoundingClientRect(), cb = cur.getBoundingClientRect();
-      tip.textContent = monthName(m.month) + ', ' + hourLabel(hr) + ' to ' + hourLabel((hr + 1) % 24) + '\n' +
+      tip.textContent = (m.recent ? 'Last 30 days' : monthName(m.month)) + ', ' + hourLabel(hr) + ' to ' + hourLabel((hr + 1) % 24) + '\n' +
         (has(p) ? 'Average ' + cents(p) : 'No data') + (has(n) ? ' · below zero ' + pct(n) + ' of the time' : '');
       tip.style.left = Math.max(90, Math.min(hb.width - 90, cb.left - hb.left + cb.width / 2)) + 'px';
       tip.style.top = (cb.top - hb.top) + 'px';

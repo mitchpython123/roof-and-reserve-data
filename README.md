@@ -88,7 +88,7 @@ the last 13 calendar months (the current month marked `partial`), by clock hour 
 | `negative_hours` | Hours in the month with a negative price |
 | `spike_intervals` | 5-minute intervals above $300/MWh |
 
-`recent` gives the same typical day over the last 28 complete market days. Only complete market
+`recent` gives the same typical day over a rolling last 30 complete market days (`from` to `to`); the widget shows it as its own row and uses it for the summary tiles by default. Only complete market
 days (at least 280 of 288 prices) count.
 
 All times are NEM time (AEST, UTC+10 all year). Prices are wholesale, not retail.

@@ -10,7 +10,7 @@ For each region and calendar month (up to the last 13, the current month include
   * demand    average operational demand, MW
 plus a month summary: average price, midday (10am to 3pm) and evening (5pm to 9pm) averages,
 the gap between them, hours of negative prices and the number of 5-minute price spikes above
-$300/MWh. `recent` is the same typical day over the last 28 complete market days.
+$300/MWh. `recent` is the same typical day over the last 30 complete market days (`from` to `to`).
 
 Only complete market days count (at least 280 of 288 prices), so a day with missing data
 cannot skew a month. Months are calendar months of market days (a market day runs 4am to 4am).
@@ -23,7 +23,7 @@ from .derive import SPIKE
 
 COMPLETE_MIN = 280
 MONTHS = 13
-RECENT_DAYS = 28
+RECENT_DAYS = 30
 
 
 def _clock_hour(slot):
@@ -124,7 +124,8 @@ def build_profile_feed(store, now=None, months=MONTHS):
         regions[region] = {
             "name": name,
             "months": out_months,
-            "recent": None if recent is None else dict(recent.summary(), to=latest_complete.isoformat()),
+            "recent": None if recent is None else dict(recent.summary(), **{
+                "from": recent_from.isoformat(), "to": latest_complete.isoformat()}),
         }
     return {
         "schema": 1,
