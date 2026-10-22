@@ -121,8 +121,10 @@ SA Power Networks); other networks offer opt-in two-way tariffs through retailer
 `retail/<next year>.json` alongside the current one before 1 July: the feed then carries it as
 `next`, and the widget switches to it at midnight on 1 July (AEST). Check a file with
 `python -m rr_nem check-retail`, which confirms every source exists and every hour of every
-month, on weekdays and weekends, has exactly one rate in each plan. A scheduled task drafts the
-new file each June for review (see below). If the year runs out with no new file, the feed marks
+month, on weekdays and weekends, has exactly one rate in each plan. Two scheduled tasks in Claude handle
+this: "Roof & Reserve retail prices for next financial year" (15 and 28 June: drafts the new
+file as a pull request for review, then merges it by the 28th) and "Roof & Reserve retail prices
+1 July check" (2 July: confirms the switch). If the year runs out with no new file, the feed marks
 the figures `stale` and the widget says they are last year's.
 
 ## STC price for the rebate calculator
