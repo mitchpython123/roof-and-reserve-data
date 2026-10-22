@@ -6,7 +6,8 @@
   is stored as a base64 data: URL so WordPress cannot alter it (see the README).
   Before going live, set data-src to the web address of your nem-latest.json file. The
   "typical day by month" section reads nem-profile.json from the same folder, or from
-  data-profile-src if that is set.
+  data-profile-src if that is set, and "What it means at home" reads nem-retail.json the same
+  way (or data-retail-src).
 -->
 <div id="rr-nem" class="rr-nem" data-src="REPLACE_WITH_DATA_URL" data-default="NSW1" data-disclaimer="/disclaimer/">
   <noscript>Live market statistics need JavaScript to be switched on.</noscript>
@@ -95,6 +96,23 @@
 .rr-nem .rr-table table{border-collapse:collapse;font-size:.72rem;white-space:nowrap}
 .rr-nem .rr-table th,.rr-nem .rr-table td{padding:3px 6px;border-bottom:1px solid #eef0ec;text-align:right}
 .rr-nem .rr-table th:first-child{text-align:left}
+.rr-nem .rr-home{margin-top:28px;padding-top:20px;border-top:1px solid #e6e8e3}
+.rr-nem .rr-home-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:4px 0 14px}
+.rr-nem .rr-home select{font:inherit;font-size:.85rem;padding:5px 28px 5px 10px;border:1px solid #cfd3cc;border-radius:6px;background:#fff;color:#1c1c1c;max-width:100%}
+.rr-nem .rr-home select:focus-visible{outline:2px solid #e09f22;outline-offset:2px}
+.rr-nem .rr-strip{position:relative;outline:none}
+.rr-nem .rr-strip:focus-visible{box-shadow:0 0 0 2px #e09f22;border-radius:4px}
+.rr-nem .rr-srow{display:grid;grid-template-columns:52px repeat(24,1fr);gap:2px;margin-bottom:2px;align-items:center}
+.rr-nem .rr-sl{font-size:.72rem;color:#5d625b;white-space:nowrap;padding-right:4px}
+.rr-nem .rr-sc{height:22px;border-radius:2px;cursor:crosshair}
+.rr-nem .rr-sc.is-now{box-shadow:inset 0 0 0 2px #1c1c1c}
+.rr-nem .rr-sc.is-hot{box-shadow:0 0 0 2px #1c1c1c;position:relative;z-index:1}
+.rr-nem .k-peak{background:#b35c12}.rr-nem .k-shoulder{background:#f5c66a}.rr-nem .k-offpeak{background:#f8ecd4}
+.rr-nem .k-soak{background:#9cc6e8}.rr-nem .k-free{background:#1f5f99}
+.rr-nem .x-none{background:#f4f5f2}.rr-nem .x-high{background:#4f8fc4}.rr-nem .x-mid{background:#d4e5f3}
+.rr-nem .x-charge{background:repeating-linear-gradient(45deg,#b35c12 0 2px,#f8ecd4 2px 6px)}
+.rr-nem .rr-home .rr-note2{margin-top:12px;font-size:.8rem;color:#5d625b;line-height:1.5}
+.rr-nem .rr-home .rr-note2 p+p{margin-top:6px}
 .rr-nem .rr-foot{position:relative;display:flex;align-items:center;gap:6px;margin-top:18px;font-size:.78rem;color:#5d625b}
 .rr-nem .rr-info{position:static!important;display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;padding:0;
   border-radius:50%;border:1px solid #9aa097;background:#fff;color:#5d625b;font:italic 600 11px/1 Georgia,serif;cursor:help;text-decoration:none!important}
@@ -175,6 +193,12 @@
     mgap: 'The average 5pm to 9pm price minus the average 10am to 3pm price for the month. It shows the gap a battery could try to capture, before losses and fees.',
     neghrs: 'The total time in the month when the 5-minute wholesale price was below zero, in hours.',
     spikes: 'The number of 5-minute intervals in the month when the wholesale price was above $300/MWh (30c/kWh).',
+    home: 'The regulated reference prices and solar rules for the electricity network that supplies your home, for the current financial year. They change each year on 1 July. Your own bill depends on your retailer and plan.',
+    dear: 'The highest usage rate that applies at some point today on this reference plan, in c/kWh including GST.',
+    cheap: 'The lowest usage rate that applies at some point today on this reference plan, in c/kWh including GST.',
+    fitref: 'The feed-in tariff that applies to exported rooftop solar in your area, where a regulator sets or publishes one. Where none is set, your retailer decides the rate.',
+    storesolar: 'About what each kWh of your own solar is worth if a battery stores it and you use it in the dearest hours today, instead of exporting it: 90% of the dearest rate (the reference battery loses about 10% on the round trip), less the feed-in tariff you would have been paid. Before battery wear, fees and any network export charges.',
+    storegrid: 'About what each kWh is worth if a battery charges from the grid at today\u2019s cheapest rate and you use it in the dearest hours: 90% of the dearest rate less the cheapest rate. Before battery wear and fees.',
     info: 'These are wholesale prices from the National Electricity Market, taken from AEMO’s public data every hour. They are not what you pay: your bill adds network, environmental and retail charges, and your retailer sets your tariff and feed-in rate. Forecasts are AEMO pre-dispatch (P30) runs, updated every 30 minutes, and can change a lot. Western Australia and the Northern Territory are not part of the NEM. General information only, not financial advice.'
   };
 
@@ -411,6 +435,231 @@
       .catch(function () { profileFailed = true; redrawSeason(); });
   }
 
+  // ---- what it means at home (nem-retail.json) -----------------------------------------------
+  var retail = null, retailFailed = false, homeNet = {}, homePlan = {};
+  try { homeNet = JSON.parse(window.localStorage.getItem('rr_nem_network') || '{}') || {}; } catch (e) { homeNet = {}; }
+  var KIND_ORDER = ['free', 'soak', 'offpeak', 'shoulder', 'peak'];
+
+  function c2(v) { return has(v) ? nf1.format(v) + 'c' : '–'; }
+  var nf2 = new Intl.NumberFormat('en-AU', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+  function cx(v) { return has(v) ? nf2.format(v) + 'c' : '–'; }   // network export rates, quoted to two decimal places
+  function hourSpan(a, b) { return hourLabel(a % 24) + ' to ' + hourLabel(b % 24); }
+  function nowIn(tz) {   // {month, weekday, hour, iso} in the given time zone
+    var parts = {};
+    try {
+      new Intl.DateTimeFormat('en-AU', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false, weekday: 'short' })
+        .formatToParts(new Date()).forEach(function (p) { parts[p.type] = p.value; });
+    } catch (e) { var d = new Date(); return { month: d.getMonth() + 1, weekday: d.getDay() > 0 && d.getDay() < 6, hour: d.getHours(), iso: d.toISOString().slice(0, 10) }; }
+    return { month: +parts.month, weekday: ['Sat', 'Sun'].indexOf(parts.weekday) < 0, hour: (+parts.hour) % 24, iso: parts.year + '-' + parts.month + '-' + parts.day };
+  }
+  function periodAt(plan, month, weekday, hour) {
+    for (var i = 0; i < plan.periods.length; i++) {
+      var p = plan.periods[i], days = p.days || 'all';
+      if (p.months && p.months.indexOf(month) < 0) { continue; }
+      if ((days === 'weekdays' && !weekday) || (days === 'weekends' && weekday)) { continue; }
+      if (p.rest) { return p; }
+      for (var k = 0; k < (p.windows || []).length; k++) { if (hour >= p.windows[k][0] && hour < p.windows[k][1]) { return p; } }
+    }
+    return null;
+  }
+  function runs(hours, test) {   // contiguous hour ranges where test(hour) is true, as "3pm to 9pm"
+    var out = [], start = null;
+    for (var h = 0; h <= 24; h++) {
+      var on = h < 24 && test(h);
+      if (on && start === null) { start = h; }
+      if (!on && start !== null) { out.push([start, h]); start = null; }
+    }
+    if (out.length === 1 && out[0][0] === 0 && out[0][1] === 24) { return 'all day'; }
+    if (out.length > 1 && out[0][0] === 0 && out[out.length - 1][1] === 24) { out[0] = [out.pop()[0], out[0][1] + 24]; }
+    return out.map(function (r) { return hourSpan(r[0], r[1]); }).join(' and ');
+  }
+  function retailYear() {
+    if (!retail || !retail.current) { return null; }
+    var today = nowIn('Australia/Brisbane').iso;
+    return (retail.next && retail.next.effective_from <= today) ? retail.next : retail.current;
+  }
+  function srcDef(year, id, label) {
+    var s = year.sources[id];
+    return s ? def(s.about + ' Source: ' + s.doc + '.', label || s.name) : esc(label || '');
+  }
+
+  function homeHtml() {
+    var head = '<div class="rr-home"><p class="rr-season-title" role="heading" aria-level="3">' + def(DEFS.home, 'What it means at home') + '</p>';
+    var year = retailYear();
+    if (!year) {
+      return head + '<p class="rr-small">' + (retailFailed ? 'Retail price information is not available right now.' : 'Loading retail price information…') + '</p></div>';
+    }
+    var nets = year.networks.filter(function (n) { return n.region === region; });
+    if (!nets.length) { return head + '<p class="rr-small">There is no retail price information for this state yet.</p></div>'; }
+    var net = nets.filter(function (n) { return n.id === homeNet[region]; })[0] || nets[0];
+    var plan = net.plans.filter(function (p) { return p.id === homePlan[net.id]; })[0] || net.plans[0];
+    var basisTz = net.time_basis === 'AEST' ? 'Australia/Brisbane' : net.tz, now = nowIn(basisTz), h, i;
+
+    var hrs = [];
+    for (h = 0; h < 24; h++) { hrs.push(periodAt(plan, now.month, now.weekday, h)); }
+    homeState = { year: year, net: net, plan: plan, hrs: hrs, now: now };
+
+    var html = head + '<p class="rr-season-sub">Regulated reference prices and solar rules for ' + esc(year.fy) + ', by the network that supplies your home.</p>';
+    html += '<div class="rr-home-controls"><label class="rr-label" for="rr-home-net">Your network</label><select id="rr-home-net">' +
+      nets.map(function (n) { return '<option value="' + esc(n.id) + '"' + (n.id === net.id ? ' selected' : '') + '>' + esc(n.name) + ' (' + esc(n.area) + ')</option>'; }).join('') + '</select>';
+    if (net.plans.length > 1) {
+      html += '<div class="rr-seg" role="group" aria-label="Reference plan">' + net.plans.map(function (p) {
+        return '<button type="button" data-plan="' + esc(p.id) + '" aria-pressed="' + (p.id === plan.id) + '">' + esc(p.name) + '</button>';
+      }).join('') + '</div>';
+    }
+    html += '</div>';
+
+    // 24-hour strip: what you pay, and what exports earn or cost
+    var fit = net.fit || {}, exp = net.export, byTime = fit.by_time || [];
+    function fitAt(hour) { for (var k = 0; k < byTime.length; k++) { if (hour >= byTime[k].window[0] && hour < byTime[k].window[1]) { return byTime[k].range; } } return null; }
+    var showExport = !!(exp || byTime.length);
+    html += '<p class="rr-label">Today, by hour (' + (net.time_basis === 'AEST' ? 'AEST' : 'local time') + ')</p><div class="rr-strip" tabindex="0" role="img" aria-label="Hour-by-hour strip of today’s reference usage rates' +
+      (showExport ? ' and export rules' : '') + ' for ' + esc(net.name) + '. Use the arrow keys to read each hour.">';
+    html += '<div class="rr-srow"><span class="rr-sl">You pay</span>';
+    for (h = 0; h < 24; h++) { html += '<span class="rr-sc k-' + esc(hrs[h].kind) + (h === now.hour ? ' is-now' : '') + '" data-row="0" data-h="' + h + '"></span>'; }
+    html += '</div>';
+    if (showExport) {
+      html += '<div class="rr-srow"><span class="rr-sl">Exports</span>';
+      for (h = 0; h < 24; h++) {
+        var cls = 'x-none', fr = fitAt(h);
+        if (exp && exp.charge && h >= exp.charge.window[0] && h < exp.charge.window[1]) { cls = 'x-charge'; }
+        else if ((exp && exp.reward && h >= exp.reward.window[0] && h < exp.reward.window[1]) || (fr && fr[0] >= 10)) { cls = 'x-high'; }
+        else if (fr && fr[1] > 6) { cls = 'x-mid'; }
+        html += '<span class="rr-sc ' + cls + (h === now.hour ? ' is-now' : '') + '" data-row="1" data-h="' + h + '"></span>';
+      }
+      html += '</div>';
+    }
+    html += '<span class="rr-htip" aria-live="polite"></span></div>';
+    html += '<div class="rr-haxis" aria-hidden="true"><span></span><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span></div>';
+
+    var used = [];
+    hrs.forEach(function (p) { if (used.indexOf(p) < 0) { used.push(p); } });
+    used.sort(function (a, b) { return KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind); });
+    html += '<p class="rr-legend">' + used.map(function (p) {
+      return '<span><i class="k-' + esc(p.kind) + '"></i>' + esc(p.name) + (p.rate === 0 ? (/free/i.test(p.name) ? '' : ' (free)') : ' ' + c2(p.rate)) + '</span>';
+    }).join('') + (showExport ? (exp && exp.charge ? '<span><i class="x-charge"></i>Network export charge</span>' : '') +
+      '<span><i class="x-high"></i>Exports worth more</span>' : '') + '<span>Outlined: now</span></p>';
+
+    // tiles
+    var dear = null, cheap = null;
+    used.forEach(function (p) { if (!dear || p.rate > dear.rate) { dear = p; } if (!cheap || p.rate < cheap.rate) { cheap = p; } });
+    var dearWhen = runs(hrs, function (x) { return hrs[x] === dear; }), cheapWhen = runs(hrs, function (x) { return hrs[x] === cheap; });
+    var keep = dear.rate * 0.9;
+    html += '<dl class="rr-grid rr-grid4">';
+    html += tile('dear', 'Dearest rate today', c2(dear.rate) + '<span class="rr-unit">/kWh</span>', esc(dear.name) + ', ' + dearWhen);
+    html += tile('cheap', 'Cheapest rate today', cheap.rate === 0 ? 'Free' : c2(cheap.rate) + '<span class="rr-unit">/kWh</span>',
+      esc(cheap.name) + ', ' + cheapWhen + (cheap.rate === 0 && plan.free_cap_kwh ? ' (up to ' + plan.free_cap_kwh + ' kWh a day)' : ''));
+    var fitVal, fitSub;
+    if (fit.kind === 'regulated') { fitVal = c2(fit.rate) + '<span class="rr-unit">/kWh</span>'; fitSub = 'Regulated: ' + srcDef(year, fit.source, year.sources[fit.source].provider); }
+    else if (fit.kind === 'benchmark') { fitVal = c2(fit.range[0]) + ' to ' + c2(fit.range[1]); fitSub = srcDef(year, fit.source, 'IPART benchmark') + ', a guide only'; }
+    else { fitVal = 'Set by your retailer'; fitSub = fit.source ? srcDef(year, fit.source, has(fit.floor) ? 'No minimum since July 2025' : 'No regulated rate') : 'No regulated rate'; }
+    html += tile('fitref', 'Feed-in tariff', fitVal, fitSub);
+    var solarVal;
+    if (fit.kind === 'regulated') { solarVal = c2(keep - fit.rate); }
+    else if (fit.kind === 'benchmark') { solarVal = c2(keep - fit.range[1]) + ' to ' + c2(keep - fit.range[0]); }
+    else { solarVal = 'Up to ' + c2(keep); }
+    html += tile('storesolar', 'Storing your solar', solarVal + '<span class="rr-unit">/kWh</span>', 'Used in the dearest hours, after 90% round-trip losses' + (fit.kind === 'retailer' ? ', before the feed-in given up' : ', less the feed-in given up'));
+    var gridGain = keep - cheap.rate;
+    html += gridGain > 0
+      ? tile('storegrid', 'Charging from the grid', c2(gridGain) + '<span class="rr-unit">/kWh</span>', 'Cheapest to dearest rate, after 90% round-trip losses')
+      : tile('storegrid', 'Charging from the grid', 'No gain today', dear === cheap ? 'One rate applies all day, so the round-trip losses outweigh any saving' : 'The rates are too close for the round-trip losses');
+    html += '</dl>';
+
+    // notes and sources
+    var basis = net.time_basis === 'AEST' ? 'Times are AEST, as the regulator publishes them (no daylight saving).'
+      : net.time_basis === 'local' ? 'Times are local time, as the regulator publishes them (including daylight saving where it applies).'
+      : 'Times are as the regulator publishes them.';
+    var ruleBits = [];
+    plan.periods.forEach(function (p) {
+      if (p.months) { ruleBits.push(esc(p.name) + ' applies in ' + p.months.map(function (m) { return MONTHS[m - 1]; }).join(', ') + ' only'); }
+      if (p.days === 'weekdays') { ruleBits.push(esc(p.name) + ' applies on weekdays only'); }
+    });
+    html += '<div class="rr-note2"><p>Reference plan: ' + srcDef(year, plan.source, plan.name) + ', supply charge ' + nf1.format(plan.supply) + 'c a day. All prices include GST. ' +
+      'These are the regulated maximum or standing offer prices; most households are on a market offer from their retailer, so check your own bill for your rates.</p>';
+    if (ruleBits.length) { html += '<p>' + ruleBits.join('; ') + '. ' + basis + '</p>'; } else { html += '<p>' + basis + '</p>'; }
+    if (exp) {
+      var ex = 'Your network, ' + esc(net.name) + ', has a ' + srcDef(year, exp.source, 'network export tariff') + ': ';
+      if (exp.charge) { ex += cx(exp.charge.rate) + '/kWh for exports ' + hourSpan(exp.charge.window[0], exp.charge.window[1]) + ' beyond the ' + esc(exp.charge.free); }
+      if (exp.reward) { ex += (exp.charge ? ', and a credit of ' : 'a credit of ') + cx(exp.reward.rate) + '/kWh for exports ' + hourSpan(exp.reward.window[0], exp.reward.window[1]); }
+      html += '<p>' + ex + '. It is charged to your retailer, who decides whether it appears on your bill.</p>';
+    }
+    if (retail.stale) { html += '<p>These are last financial year’s figures; this year’s have not been added yet.</p>'; }
+    html += '</div>';
+    return html + '</div>';
+  }
+
+  var homeState = null;
+  function wireHome() {
+    var box = root.querySelector('.rr-home');
+    if (!box) { return; }
+    var sel = box.querySelector('#rr-home-net');
+    if (sel) {
+      sel.addEventListener('change', function () {
+        homeNet[region] = sel.value;
+        try { window.localStorage.setItem('rr_nem_network', JSON.stringify(homeNet)); } catch (e) { /* ignore */ }
+        redrawHome();
+      });
+    }
+    box.querySelectorAll('[data-plan]').forEach(function (b) {
+      b.addEventListener('click', function () { if (homeState) { homePlan[homeState.net.id] = b.getAttribute('data-plan'); } redrawHome(); });
+    });
+    var strip = box.querySelector('.rr-strip');
+    if (!strip || !homeState) { return; }
+    var st = homeState, tip = strip.querySelector('.rr-htip'), cur = null, rows = strip.querySelectorAll('.rr-srow').length;
+    var fit = st.net.fit || {}, exp = st.net.export, byTime = fit.by_time || [];
+    function show(row, h) {
+      row = Math.max(0, Math.min(rows - 1, row)); h = Math.max(0, Math.min(23, h));
+      if (cur) { cur.classList.remove('is-hot'); }
+      cur = strip.querySelector('.rr-sc[data-row="' + row + '"][data-h="' + h + '"]');
+      if (!cur) { return; }
+      cur.classList.add('is-hot');
+      var text = hourSpan(h, h + 1) + '\n';
+      if (row === 0) { var p = st.hrs[h]; text += p.name + ': ' + (p.rate === 0 ? 'free' : c2(p.rate) + '/kWh'); }
+      else {
+        var bits = [];
+        for (var k = 0; k < byTime.length; k++) { if (h >= byTime[k].window[0] && h < byTime[k].window[1]) { bits.push('IPART benchmark ' + c2(byTime[k].range[0]) + ' to ' + c2(byTime[k].range[1])); } }
+        if (exp && exp.charge && h >= exp.charge.window[0] && h < exp.charge.window[1]) { bits.push('network charge ' + cx(exp.charge.rate) + ' beyond the ' + exp.charge.free); }
+        if (exp && exp.reward && h >= exp.reward.window[0] && h < exp.reward.window[1]) { bits.push('network credit ' + cx(exp.reward.rate)); }
+        text += bits.length ? bits.join(' · ') : 'No time-of-day export rule';
+      }
+      var sb = strip.getBoundingClientRect(), cb = cur.getBoundingClientRect();
+      tip.textContent = text;
+      tip.style.left = Math.max(110, Math.min(sb.width - 110, cb.left - sb.left + cb.width / 2)) + 'px';
+      tip.style.top = (cb.top - sb.top) + 'px';
+      strip.classList.add('is-hover');
+      strip.setAttribute('data-r', row); strip.setAttribute('data-h', h);
+    }
+    function hide() { strip.classList.remove('is-hover'); if (cur) { cur.classList.remove('is-hot'); } }
+    strip.querySelectorAll('.rr-sc').forEach(function (c) {
+      var go = function () { show(+c.getAttribute('data-row'), +c.getAttribute('data-h')); };
+      c.addEventListener('pointerenter', go); c.addEventListener('pointerdown', go);
+    });
+    strip.addEventListener('pointerleave', function () { if (document.activeElement !== strip) { hide(); } });
+    strip.addEventListener('focus', function () { var r0 = strip.getAttribute('data-r'), h0 = strip.getAttribute('data-h'); show(r0 === null ? 0 : +r0, h0 === null ? st.now.hour : +h0); });
+    strip.addEventListener('blur', hide);
+    strip.addEventListener('keydown', function (ev) {
+      var r1 = +(strip.getAttribute('data-r') || 0), h1 = +(strip.getAttribute('data-h') || 0), mv = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] };
+      if (mv[ev.key]) { show(r1 + mv[ev.key][0], h1 + mv[ev.key][1]); ev.preventDefault(); }
+    });
+  }
+  function redrawHome() {
+    var box = root.querySelector('.rr-home');
+    if (!box) { return; }
+    var tmp = document.createElement('div');
+    tmp.innerHTML = homeHtml();
+    box.parentNode.replaceChild(tmp.firstChild, box);
+    wireHome();
+  }
+  function loadRetail() {
+    var src = root.getAttribute('data-retail-src') || SRC.replace(/nem-latest\.json(\?.*)?$/, 'nem-retail.json');
+    if (!window.fetch || !src || src === SRC || src.indexOf('REPLACE') === 0) { retailFailed = true; redrawHome(); return; }
+    var url = src + (src.indexOf('?') < 0 ? '?' : '&') + 'v=' + Math.floor(Date.now() / 3600000);
+    window.fetch(url, { cache: 'no-cache' })
+      .then(function (resp) { if (!resp.ok) { throw new Error('HTTP ' + resp.status); } return resp.json(); })
+      .then(function (json) { retail = json; retailFailed = false; redrawHome(); })
+      .catch(function () { retailFailed = true; redrawHome(); });
+  }
+
   // ---- page --------------------------------------------------------------------------------
   function render() {
     var body = document.getElementById('rr-nem-body');
@@ -465,6 +714,7 @@
     h += '</dl>';
     h += chartHtml(r);
     h += seasonHtml();
+    h += homeHtml();
 
     var link = safeLink(DISCLAIMER);
     h += '<p class="rr-foot">Wholesale prices, updated hourly<button type="button" class="rr-g rr-info" data-def="' + esc(DEFS.info) +
@@ -472,6 +722,7 @@
     body.innerHTML = h;
     wireChart();
     wireSeason();
+    wireHome();
   }
 
   function build() {
@@ -505,6 +756,7 @@
   build();
   load();
   loadProfile();
+  loadRetail();
   window.setInterval(function () { if (!document.hidden) { load(); } }, REFRESH_MS);
 })();
 </script>

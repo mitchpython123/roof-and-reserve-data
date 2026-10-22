@@ -1,4 +1,4 @@
-"""Command line: python -m rr_nem <update | derive | rebuild-daily | rebuild-profile | backfill | prune | stc>"""
+"""Command line: python -m rr_nem <update | derive | rebuild-daily | rebuild-profile | backfill | prune | check-retail | stc>"""
 
 import argparse
 import os
@@ -9,6 +9,7 @@ from .common import now_nem
 from .backfill import backfill
 from .derive import DeriveError, derive, rebuild_daily, rebuild_profile, write_json
 from .profile import build_profile_feed
+from .retail import RetailError, build_retail_feed
 from .fetch import Fetcher
 from .ingest import IngestError, run_update
 from .stc import refresh_stc_price
@@ -47,11 +48,24 @@ def main(argv=None):
     pr.add_argument("--keep-days", type=int, default=400)
     pr.add_argument("--archive-dir", help="move them here instead of deleting them")
 
+    cr = sub.add_parser("check-retail", help="validate the retail rules and reference prices files")
+    cr.add_argument("--dir", help="folder of retail year files (default: retail/)")
+
     st = sub.add_parser("stc", help="refresh the market STC price for the rebate calculator (weekly)")
     st.add_argument("--data-dir", default="data")
     st.add_argument("--force", action="store_true", help="refresh even if the file is under a week old")
 
     args = parser.parse_args(argv)
+    if args.cmd == "check-retail":
+        from .retail import RETAIL_DIR, load_years
+        try:
+            docs = load_years(args.dir or RETAIL_DIR)
+        except RetailError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        for d in docs:
+            print(f"{d['fy']}: {d['effective_from']} to {d['effective_to']}, {len(d['networks'])} networks, OK")
+        return 0
     if args.cmd == "stc":
         print(refresh_stc_price(args.data_dir, Fetcher(), now_nem(), force=args.force))
         return 0
@@ -70,6 +84,16 @@ def main(argv=None):
                 path = os.path.join(os.path.dirname(os.path.abspath(out)), "nem-profile.json")
                 write_json(path, feed)
                 print(f"wrote {path} (to {feed['latest_complete_day']})")
+            try:
+                retail = build_retail_feed()
+            except RetailError as exc:  # a bad retail file must not stop the price feed
+                print(f"warning: retail rules not published: {exc}", file=sys.stderr)
+                retail = None
+            if retail is not None:
+                path = os.path.join(os.path.dirname(os.path.abspath(out)), "nem-retail.json")
+                write_json(path, retail)
+                print(f"wrote {path} (current {retail['current']['fy']}"
+                      f"{', next ' + retail['next']['fy'] if retail['next'] else ''})")
         if args.cmd == "rebuild-daily":
             since = date.fromisoformat(args.since) if args.since else None
             print(f"rebuilt {rebuild_daily(store, since)} daily_stats rows")

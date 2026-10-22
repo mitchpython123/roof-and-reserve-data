@@ -93,6 +93,38 @@ days (at least 280 of 288 prices) count.
 
 All times are NEM time (AEST, UTC+10 all year). Prices are wholesale, not retail.
 
+## What it means at home (`nem-retail.json`)
+
+The Market snapshot widget's last section shows, for the network that supplies the visitor's
+home, the regulated reference prices and solar rules for the financial year: a 24-hour strip of
+usage periods and export rules, the dearest and cheapest rates today, the feed-in tariff
+(regulated rate, IPART benchmark, or retailer-set), and what a kWh stored in the reference
+battery is worth after 90% round-trip losses.
+
+The figures are kept by hand in `retail/<financial year>.json` (for example
+`retail/2026-27.json`), one file per year with `effective_from` and `effective_to` dates. Each
+figure's source is named in the file's `sources` block, and every source carries a short
+description that the widget shows as a hover definition (who provides it and where to find it).
+
+| Network area | Reference plan | Feed-in tariff |
+| --- | --- | --- |
+| NSW (Ausgrid, Endeavour, Essential), SE Qld (Energex), SA (SA Power Networks) | AER Default Market Offer caps: standard time of use and the Solar Sharer Offer | IPART benchmarks in NSW; retailer set in SE Qld and SA |
+| ACT (Evoenergy) | ActewAGL standard plan, regulated by the ICRC | Retailer set |
+| Regional Qld (Ergon) | QCA notified prices, tariffs 12D and 12E (gazetted excl. GST; GST added) | Regulated by the QCA |
+| Victoria (five networks) | ESC Victorian Default Offer, time of use | Retailer set (no minimum since July 2025) |
+| Tasmania (TasNetworks) | Aurora Energy standing offer, tariff 93, approved by OTTER | Regulated by OTTER |
+
+Network export tariffs are included only where the network applies them by default (Ausgrid and
+SA Power Networks); other networks offer opt-in two-way tariffs through retailers.
+
+**Each year.** Regulators publish the next year's figures in May and June. Add
+`retail/<next year>.json` alongside the current one before 1 July: the feed then carries it as
+`next`, and the widget switches to it at midnight on 1 July (AEST). Check a file with
+`python -m rr_nem check-retail`, which confirms every source exists and every hour of every
+month, on weekdays and weekends, has exactly one rate in each plan. A scheduled task drafts the
+new file each June for review (see below). If the year runs out with no new file, the feed marks
+the figures `stale` and the widget says they are last year's.
+
 ## STC price for the rebate calculator
 
 The [battery rebate calculator](https://roofandreserve.com/battery-rebate-calculator/) uses the
@@ -134,7 +166,8 @@ summary tables are never pruned.
 
 | Path | Purpose |
 | --- | --- |
-| `rr_nem/` | The pipeline: download (`fetch.py`, `ingest.py`, `backfill.py`), read AEMO files (`mms.py`), store (`store.py`), summarise (`derive.py`, `profile.py`); `stc.py` refreshes the STC price |
+| `rr_nem/` | The pipeline: download (`fetch.py`, `ingest.py`, `backfill.py`), read AEMO files (`mms.py`), store (`store.py`), summarise (`derive.py`, `profile.py`); `retail.py` checks and publishes the retail rules; `stc.py` refreshes the STC price |
+| `retail/` | Retail reference prices and solar rules, one file per financial year |
 | `tests/` | Unit tests: `python3 -m unittest discover -s tests -t .` |
 | `widget/widget.html` | Source of the widget. The live copy sits in a Custom HTML block on the home page |
 | `widget/sample-nem-latest.json`, `widget/preview.html` | Invented sample data and a local preview page |
