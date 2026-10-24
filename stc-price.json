@@ -1,0 +1,9 @@
+{
+  "price": 39.85,
+  "as_of": "2026-10-19",
+  "trades": 25,
+  "currency": "AUD",
+  "source": "Demand Manager STC spot trades",
+  "source_url": "https://www.demandmanager.com.au/graphs/new_prices.php",
+  "fetched_at": "2026-10-21T20:34:13+10:00"
+}
